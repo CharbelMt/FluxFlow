@@ -1,0 +1,15 @@
+# Node/Vue/Electron
+**/node_modules/
+**/dist/
+.env
+
+# Flutter/Dart
+**/build/
+**/.dart_tool/
+**/.packages
+**/ios/Flutter/Generated.xcframework
+**/android/local.properties
+
+# OS files
+.DS_Store
+Thumbs.db
