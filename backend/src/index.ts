@@ -1,34 +1,128 @@
+import { Elysia, t } from "elysia";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
+import { eq } from "drizzle-orm";
 import * as schema from "./db/schema";
 
-const client = new Client({
-	connectionString: process.env.DATABASE_URL,
-});
-
+const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 const db = drizzle(client, { schema });
 
-const server = Bun.serve({
-	port: 3000,
-	async fetch(req) {
-		const url = new URL(req.url);
+const app = new Elysia()
 
-		// A simple test route to see if the DB is talking to us
-		if (url.pathname === "/test-db") {
-			try {
-				const allSites = await db.query.sites.findMany();
-				return Response.json({
-					message: "Connection Secure!",
-					siteCount: allSites.length,
-				});
-			} catch (err) {
-				return Response.json({ error: String(err) }, { status: 500 });
+	.get("/test-db", async () => {
+		const allSites = await db.query.sites.findMany();
+		return { message: "Connection Secure!", count: allSites.length };
+	})
+
+	.post(
+		"/login",
+		async ({ body, set }) => {
+			const userRecord = await db.query.users.findFirst({
+				where: eq(schema.users.email, body.email),
+			});
+
+			if (
+				!userRecord ||
+				!(await Bun.password.verify(body.password, userRecord.passwordHash))
+			) {
+				set.status = 401;
+				return { error: "Invalid credentials" };
 			}
-		}
 
-		return new Response("FluxFlow Backend is Online.");
-	},
-});
+			const { passwordHash, ...safeUser } = userRecord;
+			return { success: true, user: safeUser };
+		},
+		{
+			body: t.Object({
+				email: t.String(),
+				password: t.String(),
+			}),
+		},
+	)
 
-console.log(`🚀 FluxFlow server running at http://localhost:${server.port}`);
+	.post(
+		"/users",
+		async ({ body, set }) => {
+			const creator = await db.query.users.findFirst({
+				where: eq(schema.users.id, body.admin_id),
+			});
+
+			if (!creator || creator.role !== "admin") {
+				set.status = 403;
+				return { error: "Forbidden: Only admins can create users." };
+			}
+
+			const temporaryHash = await Bun.password.hash(body.password);
+
+			try {
+				const newUser = await db
+					.insert(schema.users)
+					.values({
+						fullName: body.full_name,
+						email: body.email,
+						passwordHash: temporaryHash,
+						role: body.role,
+					})
+					.returning();
+
+				if (!newUser[0]) {
+					set.status = 400;
+					return { error: "Failed to create user." };
+				}
+
+				const { passwordHash, ...safeUser } = newUser[0];
+				return { success: true, user: safeUser };
+			} catch (err) {
+				set.status = 400;
+				return { error: "Could not create user. Email might already exist." };
+			}
+		},
+		{
+			body: t.Object({
+				admin_id: t.String(),
+				full_name: t.String(),
+				email: t.String(),
+				password: t.String(),
+				role: t.Union([
+					t.Literal("admin"),
+					t.Literal("manager"),
+					t.Literal("supervisor"),
+				]),
+			}),
+		},
+	)
+
+	.group("/sites", (app) =>
+		app
+			.get("/", () => db.query.sites.findMany())
+
+			.post(
+				"/",
+				async ({ body }) => {
+					const newSite = await db
+						.insert(schema.sites)
+						.values({
+							name: body.name,
+							locationGps: body.location_gps,
+							managerId: body.manager_id,
+						})
+						.returning();
+
+					return { success: true, site: newSite[0] };
+				},
+				{
+					body: t.Object({
+						name: t.String(),
+						location_gps: t.Optional(t.String()),
+						manager_id: t.String(),
+					}),
+				},
+			),
+	)
+
+	.listen(3000);
+
+console.log(
+	`🚀 FluxFlow Elysia server running at ${app.server?.hostname}:${app.server?.port}`,
+);
