@@ -2,13 +2,27 @@ import { Elysia, t } from "elysia";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
 import { eq } from "drizzle-orm";
+import { jwt } from "@elysiajs/jwt";
 import * as schema from "./db/schema";
+import cors from "@elysiajs/cors";
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 const db = drizzle(client, { schema });
 
 const app = new Elysia()
+	.use(
+		cors({
+			origin: "http://localhost:9000",
+		}),
+	)
+
+	.use(
+		jwt({
+			name: "jwt",
+			secret: process.env.JWT_SECRET || "FORGE_A_BETTER_SECRET_THAN_THIS",
+		}),
+	)
 
 	.get("/test-db", async () => {
 		const allSites = await db.query.sites.findMany();
@@ -17,7 +31,7 @@ const app = new Elysia()
 
 	.post(
 		"/login",
-		async ({ body, set }) => {
+		async ({ body, set, jwt }) => {
 			const userRecord = await db.query.users.findFirst({
 				where: eq(schema.users.email, body.email),
 			});
@@ -30,8 +44,17 @@ const app = new Elysia()
 				return { error: "Invalid credentials" };
 			}
 
+			const token = await jwt.sign({
+				sub: userRecord.id,
+				role: userRecord.role,
+			});
+
 			const { passwordHash, ...safeUser } = userRecord;
-			return { success: true, user: safeUser };
+			return {
+				success: true,
+				token,
+				user: safeUser,
+			};
 		},
 		{
 			body: t.Object({
