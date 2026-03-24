@@ -1,11 +1,6 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
-
-interface LoginCredentials {
-  email: string;
-  password: string;
-  persist: boolean;
-}
+import type { LoginCredentials } from 'src/utils/types';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
