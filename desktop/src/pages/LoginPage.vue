@@ -71,8 +71,6 @@
             />
           </q-card-section>
         </q-card>
-
-        <qit-banner />
       </q-form>
     </div>
   </div>
@@ -116,12 +114,3 @@ async function onSubmit() {
   }
 }
 </script>
-
-<style scoped>
-.bg-white\/92 {
-  background-color: rgba(255, 255, 255, 0.92);
-}
-.backdrop-blur-sm {
-  backdrop-filter: blur(4px);
-}
-</style>
