@@ -34,14 +34,18 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   });
 
-  Router.beforeEach((to, from, next) => {
+  Router.beforeEach((to) => {
     const authStore = useAuthStore();
 
     if (to.meta.requiresAuth && !authStore.token) {
-      next('/login');
-    } else {
-      next();
+      return '/login';
     }
+
+    if (to.meta.guestOnly && authStore.token) {
+      return '/';
+    }
+
+    return true;
   });
 
   return Router;
