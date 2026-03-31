@@ -10,7 +10,27 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    children: [
+      {
+        path: '',
+        redirect: { name: 'dashboard' },
+      },
+      {
+        path: 'dashboard',
+        name: 'dashboard',
+        component: () => import('pages/DashboardPage.vue'),
+      },
+      {
+        path: 'sites',
+        name: 'sites',
+        component: () => import('pages/SitesPage.vue'),
+      },
+      {
+        path: 'assets',
+        name: 'assets',
+        component: () => import('pages/AssetsPage.vue'),
+      },
+    ],
   },
 
   // Always leave this as last one,
