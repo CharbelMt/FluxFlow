@@ -12,4 +12,14 @@ export default {
     remember_me: 'Remember me',
     login: 'Login',
   },
+  navigation: {
+    menu: 'Menu',
+    logout: 'Logout',
+    dashboard: 'Dashboard',
+    sites: 'Sites',
+    assets: 'Assets',
+  },
+  labels: {
+    FluxFlow: 'FluxFlow',
+  },
 };
