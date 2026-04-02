@@ -118,7 +118,13 @@ const app = new Elysia()
 
 	.group("/sites", (app) =>
 		app
-			.get("/", () => db.query.sites.findMany())
+			.get("/", async () => {
+				return await db.query.sites.findMany({
+					with: {
+						storageRooms: true,
+					},
+				});
+			})
 
 			.post(
 				"/",
@@ -142,6 +148,43 @@ const app = new Elysia()
 					}),
 				},
 			),
+	)
+
+	.group("/storage-rooms", (app) =>
+		app.post(
+			"/",
+			async ({ body }) => {
+				const newRoom = await db
+					.insert(schema.storageRooms)
+					.values({
+						siteId: body.site_id,
+						roomLabel: body.room_label,
+						roomTagUid: body.room_tag_uid,
+					})
+					.returning();
+
+				return { success: true, room: newRoom[0] };
+			},
+			{
+				body: t.Object({
+					site_id: t.String(),
+					room_label: t.String(),
+					room_tag_uid: t.String(),
+				}),
+			},
+		),
+	)
+
+	.group("/assets", (app) =>
+		app.get("/", async () => {
+			return await db.query.assetInstances.findMany({
+				with: {
+					type: true, // Pulls model_name, manufacturer
+					site: true, // Pulls site name
+					room: true, // Pulls current location label
+				},
+			});
+		}),
 	)
 
 	.listen(3000);
