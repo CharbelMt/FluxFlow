@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
         name: 'assets',
         component: () => import('pages/AssetsPage.vue'),
       },
+      {
+        path: 'supervisors',
+        name: 'supervisors',
+        component: () => import('pages/SupervisorManagementPage.vue'),
+      },
     ],
   },
 
@@ -38,6 +43,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
+    beforeEnter: (to) => {
+      if (to.hash && to.hash.length > 1) {
+        return false;
+      }
+    },
   },
 ];
 
