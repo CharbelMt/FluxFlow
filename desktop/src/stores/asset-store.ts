@@ -23,5 +23,27 @@ export const useAssetStore = defineStore('assets', {
         this.loading = false;
       }
     },
+
+    async bulkCreateAssets(payload: {
+      site_id: string;
+      room_id: string;
+      type_id?: string;
+      new_type?: {
+        model_name: string;
+        manufacturer: string;
+        category: string;
+        maintenance_interval_hrs: number;
+      };
+      serial_numbers: string[];
+    }) {
+      this.loading = true;
+      try {
+        const response = await api.post('/assets/bulk', payload);
+        await this.fetchAssets(); // Refresh the table
+        return response.data;
+      } finally {
+        this.loading = false;
+      }
+    },
   },
 });
