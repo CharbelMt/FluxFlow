@@ -1,79 +1,103 @@
 <template>
-  <div
-    class="absolute z-0 pointer-events-none bg-center bg-no-repeat bg-cover h-screen w-screen inset-0"
-    aria-hidden="true"
-  ></div>
-
-  <div class="fixed-center max-w-md w-full px-4">
-    <div class="bg-white/92 rounded-xl backdrop-blur-sm py-8 shadow-2xl text-center">
-      <q-icon name="hub" size="100px" color="primary" class="q-mb-md" />
-      <div class="text-5xl font-bold text-slate-800 text-center mb-2">FluxFlow Login</div>
-      <p class="text-slate-500 text-center mb-8">{{ $t('login.credentials') }}</p>
-
-      <q-form ref="loginForm" @submit="onSubmit" class="q-px-md">
-        <q-card
-          flat
-          class="rounded-xl bg-transparent border-none"
-          :class="{ 'bg-dark': $q.dark.isActive }"
-        >
-          <q-card-section class="q-gutter-y-md">
-            <q-input
-              v-model="form.email"
-              outlined
-              type="email"
-              :label="$t('login.enter_email')"
-              lazy-rules
-              :rules="[
-                (val) => (val && val.length > 0) || $t('login.required'),
-                (val) => /.+@.+\..+/.test(val) || $t('login.invalid_email'),
-              ]"
-            >
-              <template #prepend>
-                <q-icon :name="mdiEmail" />
-              </template>
-            </q-input>
-
-            <q-input
-              v-model="form.password"
-              outlined
-              :type="isPwd ? 'password' : 'text'"
-              :label="$t('login.enter_password')"
-              lazy-rules
-              :rules="[(val) => (val && val.length > 0) || $t('login.invalid_password')]"
-            >
-              <template #prepend>
-                <q-icon :name="mdiLock" />
-              </template>
-              <template #append>
-                <q-icon
-                  :name="isPwd ? mdiEye : mdiEyeClosed"
-                  class="cursor-pointer"
-                  @click="isPwd = !isPwd"
-                />
-              </template>
-            </q-input>
-
-            <label class="row items-center justify-between flex-nowrap">
-              {{ $t('login.remember_me') }}?
-              <q-checkbox v-model="form.persist" color="primary" class="ml-5" dense size="lg" />
-            </label>
-          </q-card-section>
-
-          <q-card-section>
-            <q-btn
-              :label="$t('login.login')"
-              no-caps
-              rounded
-              type="submit"
-              color="primary"
-              class="full-width py-sm"
-              :loading="isLoading"
-            />
-          </q-card-section>
-        </q-card>
-      </q-form>
+  <q-page class="flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+    <div class="pointer-events-none absolute inset-0 overflow-hidden">
+      <div class="absolute -left-20 top-16 h-72 w-72 rounded-full bg-cyan-600/35 blur-3xl"></div>
+      <div class="absolute right-0 top-0 h-80 w-80 rounded-full bg-blue-700/25 blur-3xl"></div>
+      <div
+        class="absolute bottom-0 left-1/4 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl"
+      ></div>
     </div>
-  </div>
+
+    <div
+      class="grid w-full max-w-5xl overflow-hidden rounded-3xl border border-slate-300 bg-slate-50/95 shadow-2xl backdrop-blur-xl lg:grid-cols-2"
+    >
+      <div
+        class="hidden bg-linear-to-br from-cyan-700 via-sky-700 to-indigo-800 p-8 text-white lg:flex lg:flex-col lg:justify-between"
+      >
+        <div>
+          <div
+            class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest"
+          >
+            Secure Access
+          </div>
+          <div class="mt-6 text-4xl font-black leading-tight">Welcome Back to FluxFlow</div>
+          <p class="mt-4 text-sm text-cyan-100">
+            Coordinate sites, assets, and supervisors with one unified operations hub.
+          </p>
+        </div>
+        <div class="font-mono text-xs uppercase tracking-[0.2em] text-cyan-100">
+          Real-time Field Control
+        </div>
+      </div>
+
+      <div class="p-6 sm:p-8">
+        <div class="q-mb-lg text-center">
+          <q-icon name="hub" size="74px" color="primary" class="q-mb-sm" />
+          <div class="text-3xl font-black tracking-tight text-slate-800">FluxFlow Login</div>
+          <p class="mt-1 text-slate-600">{{ $t('login.credentials') }}</p>
+        </div>
+
+        <q-form ref="loginForm" @submit="onSubmit">
+          <q-card flat class="rounded-2xl border border-slate-300 bg-white p-2">
+            <q-card-section class="q-gutter-y-md">
+              <q-input
+                v-model="form.email"
+                outlined
+                type="email"
+                :label="$t('login.enter_email')"
+                lazy-rules
+                :rules="[
+                  (val) => (val && val.length > 0) || $t('login.required'),
+                  (val) => /.+@.+\..+/.test(val) || $t('login.invalid_email'),
+                ]"
+              >
+                <template #prepend>
+                  <q-icon :name="mdiEmail" />
+                </template>
+              </q-input>
+
+              <q-input
+                v-model="form.password"
+                outlined
+                :type="isPwd ? 'password' : 'text'"
+                :label="$t('login.enter_password')"
+                lazy-rules
+                :rules="[(val) => (val && val.length > 0) || $t('login.invalid_password')]"
+              >
+                <template #prepend>
+                  <q-icon :name="mdiLock" />
+                </template>
+                <template #append>
+                  <q-icon
+                    :name="isPwd ? mdiEye : mdiEyeClosed"
+                    class="cursor-pointer"
+                    @click="isPwd = !isPwd"
+                  />
+                </template>
+              </q-input>
+
+              <label class="row items-center justify-between text-slate-600">
+                {{ $t('login.remember_me') }}?
+                <q-checkbox v-model="form.persist" color="primary" dense size="lg" />
+              </label>
+            </q-card-section>
+
+            <q-card-section>
+              <q-btn
+                :label="$t('login.login')"
+                no-caps
+                rounded
+                type="submit"
+                color="primary"
+                class="full-width rounded-xl py-3 font-semibold"
+                :loading="isLoading"
+              />
+            </q-card-section>
+          </q-card>
+        </q-form>
+      </div>
+    </div>
+  </q-page>
 </template>
 
 <script setup lang="ts">

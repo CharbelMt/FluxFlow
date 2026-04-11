@@ -1,1 +1,39 @@
 // app global css in SCSS form
+
+:root {
+  --ff-bg-0: #e6eff8;
+  --ff-bg-1: #d4e2f2;
+  --ff-bg-2: #c6d7ec;
+  --ff-text: #0b1a2e;
+  --ff-surface: #f8fbff;
+  --ff-border: #b8c9de;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ff-text);
+  font-family: 'Space Grotesk', 'Manrope', 'Segoe UI', sans-serif;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(14, 116, 144, 0.24), transparent 38%),
+    radial-gradient(circle at 100% 30%, rgba(30, 64, 175, 0.2), transparent 42%),
+    linear-gradient(180deg, var(--ff-bg-0) 0%, var(--ff-bg-1) 55%, var(--ff-bg-2) 100%);
+}
+
+.q-card {
+  border-radius: 1rem;
+  border-color: var(--ff-border);
+  background: var(--ff-surface);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(5px);
+}
