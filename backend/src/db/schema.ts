@@ -11,7 +11,7 @@ import {
 	date,
 	text,
 } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const users = pgTable(
 	"users",
@@ -218,4 +218,69 @@ export const maintenanceRecords = pgTable(
 			name: "maintenance_records_asset_id_fkey",
 		}),
 	],
+);
+
+export const usersRelations = relations(users, ({ many }) => ({
+	managedSites: many(sites),
+	assignedSites: many(siteSupervisors),
+	auditLogs: many(auditLogs),
+}));
+
+export const sitesRelations = relations(sites, ({ one, many }) => ({
+	manager: one(users, {
+		fields: [sites.managerId],
+		references: [users.id],
+	}),
+	storageRooms: many(storageRooms),
+	supervisors: many(siteSupervisors),
+	assets: many(assetInstances),
+}));
+
+export const storageRoomsRelations = relations(
+	storageRooms,
+	({ one, many }) => ({
+		site: one(sites, {
+			fields: [storageRooms.siteId],
+			references: [sites.id],
+		}),
+		assets: many(assetInstances),
+	}),
+);
+
+export const assetTypesRelations = relations(assetTypes, ({ many }) => ({
+	instances: many(assetInstances),
+}));
+
+export const assetInstancesRelations = relations(
+	assetInstances,
+	({ one, many }) => ({
+		type: one(assetTypes, {
+			fields: [assetInstances.typeId],
+			references: [assetTypes.id],
+		}),
+		site: one(sites, {
+			fields: [assetInstances.assignedSiteId],
+			references: [sites.id],
+		}),
+		room: one(storageRooms, {
+			fields: [assetInstances.currentRoomId],
+			references: [storageRooms.id],
+		}),
+		maintenanceRecords: many(maintenanceRecords),
+		auditLogs: many(auditLogs),
+	}),
+);
+
+export const siteSupervisorsRelations = relations(
+	siteSupervisors,
+	({ one }) => ({
+		site: one(sites, {
+			fields: [siteSupervisors.siteId],
+			references: [sites.id],
+		}),
+		supervisor: one(users, {
+			fields: [siteSupervisors.supervisorId],
+			references: [users.id],
+		}),
+	}),
 );
