@@ -21,9 +21,8 @@
       <div class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
         <div v-for="site in siteStore.sites" :key="site.id">
           <q-card
-            flat
             bordered
-            class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
+            class="overflow-hidden no-shadow rounded-2xl border-slate-300 bg-slate-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md!"
           >
             <q-card-section class="border-b border-slate-100 bg-slate-50/80">
               <div class="text-xl font-black tracking-tight text-slate-800">{{ site.name }}</div>
@@ -68,6 +67,7 @@
                 no-caps
                 class="rounded-lg"
                 @click="openEditSiteDialog(site)"
+                rounded
               />
               <q-btn
                 flat
@@ -76,6 +76,7 @@
                 no-caps
                 class="rounded-lg"
                 @click="manageSiteAssets(site.id)"
+                rounded
               />
             </q-card-actions>
           </q-card>

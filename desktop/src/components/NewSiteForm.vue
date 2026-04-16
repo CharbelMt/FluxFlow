@@ -1,12 +1,12 @@
 <template>
-  <q-card flat class="bg-white overflow-hidden">
+  <q-card flat class="bg-white overflow-hidden" style="min-width: 500px">
     <CardSectionTitle
       :title="isEditMode ? $t('forms.new_site.title_edit') : $t('forms.new_site.title_create')"
       @close="props.onDialogCancel"
     />
 
-    <q-card-section class="q-pa-lg q-gutter-y-lg">
-      <div class="column q-gutter-sm">
+    <q-card-section class="q-pa-lg flex flex-col gap-4">
+      <div class="column gap-2">
         <div class="text-overline text-primary font-bold">{{ $t('forms.new_site.details') }}</div>
         <q-input
           v-model="form.name"
@@ -39,11 +39,12 @@
       </div>
     </q-card-section>
 
-    <q-card-actions align="right" class="q-pa-lg bg-slate-50">
+    <q-card-actions align="right" class="q-pa-lg">
       <q-btn
         flat
+        rounded
         :label="$t('forms.new_site.discard')"
-        color="slate-400"
+        color="negative"
         :disable="submitting"
         @click="props.onDialogCancel"
       />

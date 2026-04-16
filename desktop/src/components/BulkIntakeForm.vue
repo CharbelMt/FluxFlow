@@ -1,11 +1,11 @@
 <template>
-  <q-card flat class="bg-white overflow-hidden">
+  <q-card flat class="bg-white overflow-hidden" style="min-width: 550px">
     <CardSectionTitle :title="$t('forms.bulk_intake.title')" @close="onDialogCancel" />
 
-    <q-card-section class="q-pa-lg q-gutter-y-lg">
-      <div class="column q-gutter-sm">
+    <q-card-section class="q-pa-lg flex flex-col gap-4">
+      <div class="column gap-2">
         <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step1') }}</div>
-        <div class="row q-col-gutter-md">
+        <div class="row gap-3">
           <q-select
             v-model="form.site_id"
             :label="$t('forms.bulk_intake.target_site')"
@@ -15,7 +15,7 @@
             emit-value
             map-options
             outlined
-            class="col-12 col-sm-6"
+            class="flex-1"
           />
           <q-select
             v-model="form.room_id"
@@ -27,14 +27,12 @@
             map-options
             outlined
             :disable="!form.site_id"
-            class="col-12 col-sm-6"
+            class="flex-1"
           />
         </div>
       </div>
 
-      <q-separator />
-
-      <div class="column q-gutter-sm">
+      <div class="column gap-2">
         <div class="row items-center justify-between">
           <div class="text-overline text-primary font-bold">
             {{ $t('forms.bulk_intake.step2') }}
@@ -60,43 +58,37 @@
 
         <div
           v-else
-          class="q-pa-md bg-slate-50 rounded-lg border border-dashed border-slate-300 q-gutter-sm"
+          class="q-pa-md rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col gap-3"
         >
           <q-input
             v-model="form.new_type.model_name"
             :label="$t('forms.bulk_intake.model_name')"
-            dense
             outlined
           />
           <q-input
             v-model="form.new_type.manufacturer"
             :label="$t('forms.bulk_intake.manufacturer')"
-            dense
             outlined
           />
-          <div class="row q-col-gutter-sm">
+          <div class="row gap-3">
             <q-input
               v-model="form.new_type.category"
               :label="$t('forms.bulk_intake.category')"
-              dense
               outlined
-              class="col-6"
+              class="flex-1"
             />
             <q-input
               v-model.number="form.new_type.maintenance_interval_hrs"
               type="number"
               :label="$t('forms.bulk_intake.interval_hours')"
-              dense
               outlined
-              class="col-6"
+              class="flex-1"
             />
           </div>
         </div>
       </div>
 
-      <q-separator />
-
-      <div class="column q-gutter-sm">
+      <div class="column gap-2">
         <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step3') }}</div>
         <q-input
           v-model="serial_input"
@@ -109,11 +101,12 @@
       </div>
     </q-card-section>
 
-    <q-card-actions align="right" class="q-pa-lg bg-slate-50">
+    <q-card-actions align="right" class="q-pa-lg">
       <q-btn
         flat
+        rounded
         :label="$t('forms.bulk_intake.discard')"
-        color="slate-400"
+        color="negative"
         @click="onDialogCancel"
       />
       <q-btn

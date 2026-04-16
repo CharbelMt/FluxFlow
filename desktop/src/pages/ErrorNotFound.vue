@@ -17,6 +17,7 @@
         to="/"
         :label="$t('errors.go_home')"
         no-caps
+        rounded
       />
     </div>
   </div>

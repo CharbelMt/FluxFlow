@@ -1,11 +1,11 @@
 <template>
-  <q-card flat class="bg-white overflow-hidden">
+  <q-card flat class="bg-white overflow-hidden" style="min-width: 450px">
     <CardSectionTitle
       :title="isEditMode ? $t('forms.supervisor.title_edit') : $t('forms.supervisor.title_create')"
       @close="props.onDialogCancel"
     />
 
-    <q-card-section class="q-pa-lg q-gutter-y-md">
+    <q-card-section class="q-pa-lg flex flex-col gap-3">
       <q-input
         v-model="form.full_name"
         :label="$t('forms.supervisor.full_name')"
@@ -33,11 +33,12 @@
       />
     </q-card-section>
 
-    <q-card-actions align="right" class="q-pa-lg bg-slate-50">
+    <q-card-actions align="right" class="q-pa-lg">
       <q-btn
         flat
+        rounded
         :label="$t('forms.supervisor.discard')"
-        color="slate-400"
+        color="negative"
         :disable="submitting"
         @click="props.onDialogCancel"
       />

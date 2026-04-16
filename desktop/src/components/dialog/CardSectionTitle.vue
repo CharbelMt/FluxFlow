@@ -12,6 +12,7 @@
         :icon="mdiArrowLeft"
         size="md"
         @click.prevent="$emit('back')"
+        rounded
       />
 
       <div class="text-h6">{{ title }}</div>
@@ -24,6 +25,7 @@
         :icon="mdiClose"
         size="md"
         @click.prevent="$emit('close')"
+        rounded
       />
     </div>
   </q-card-section>

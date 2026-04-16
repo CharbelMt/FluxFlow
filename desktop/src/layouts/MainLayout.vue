@@ -13,6 +13,7 @@
           :icon="mdiMenu"
           class="rounded-lg text-white/80 hover:bg-cyan-800 hover:text-white transition-colors"
           @click="toggleLeftDrawer"
+          rounded
         />
 
         <q-toolbar-title class="q-ml-sm">
@@ -31,6 +32,7 @@
           :icon="mdiLogout"
           class="text-white/80"
           @click="handleLogout"
+          rounded
         />
       </q-toolbar>
     </q-header>
