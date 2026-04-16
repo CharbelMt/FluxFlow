@@ -1,18 +1,15 @@
 <template>
   <q-page class="q-pa-md sm:q-pa-lg">
     <div class="mx-auto w-full max-w-7xl">
-      <div class="q-mb-lg rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div class="text-sm font-semibold text-slate-600">
-            {{ $t('supervisors.user_actions') }}
-          </div>
-          <div class="row items-center q-gutter-sm">
+      <div class="q-mb-lg rounded-2xl border border-slate-300 bg-slate-50 p-4 shadow-sm">
+        <div class="flex flex-col gap-3">
+          <div class="row items-center q-gutter-md">
             <q-input
               v-model="filter"
               outlined
               dense
               :placeholder="$t('supervisors.search_placeholder')"
-              class="w-full rounded-xl bg-white sm:w-72"
+              class="grow rounded-xl bg-white"
             >
               <template v-slot:prepend>
                 <q-icon :name="mdiMagnify" color="primary" />
@@ -39,7 +36,7 @@
         row-key="id"
         flat
         bordered
-        class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-sm"
+        class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-md"
         :pagination="{ rowsPerPage: 10 }"
       >
         <template v-slot:loading>
@@ -70,6 +67,7 @@
               no-caps
               class="rounded-lg"
               @click="openEditDialog(props.row)"
+              rounded
             />
           </q-td>
         </template>
