@@ -2,11 +2,11 @@
   <div class="fullscreen bg-blue text-white text-center q-pa-md flex flex-center">
     <div>
       <div style="font-size: 30vh">
-        404
+        {{ $t('errors.page_404') }}
       </div>
 
-      <div class="text-h2" style="opacity:.4">
-        Oops. Nothing here...
+      <div class="text-h2" style="opacity: 0.4">
+        {{ $t('errors.nothing_here') }}
       </div>
 
       <q-btn
@@ -15,7 +15,7 @@
         text-color="blue"
         unelevated
         to="/"
-        label="Go Home"
+        :label="$t('errors.go_home')"
         no-caps
       />
     </div>
@@ -23,5 +23,7 @@
 </template>
 
 <script setup lang="ts">
-//
+import { useI18n } from 'vue-i18n';
+
+const { t: $t } = useI18n();
 </script>

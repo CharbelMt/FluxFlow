@@ -11,14 +11,14 @@
               icon="place"
               class="font-mono"
             >
-              Site Scope: {{ selectedSiteName }}
+              {{ $t('assets.site_scope', { selectedSiteName }) }}
             </q-chip>
             <q-btn
               v-if="selectedSiteName"
               flat
               dense
               color="primary"
-              label="Clear Scope"
+              :label="$t('assets.clear_scope')"
               @click="clearSiteScope"
             />
           </div>
@@ -28,7 +28,7 @@
               v-model="filter"
               outlined
               dense
-              placeholder="Search Assets..."
+              :placeholder="$t('assets.search_placeholder')"
               class="w-full rounded-xl bg-white sm:w-72"
             >
               <template v-slot:prepend>
@@ -39,7 +39,7 @@
             <q-btn
               color="primary"
               icon="add"
-              label="Bulk Intake"
+              :label="$t('assets.bulk_intake')"
               unelevated
               rounded
               class="rounded-xl q-px-md font-semibold"
@@ -79,7 +79,7 @@
               size="sm"
               class="px-3 font-black uppercase"
             >
-              {{ props.row.status || 'Unknown' }}
+              {{ props.row.status || $t('assets.status_unknown') }}
             </q-chip>
           </q-td>
         </template>
@@ -90,10 +90,10 @@
               <q-icon name="place" color="slate-300" size="18px" class="q-mr-xs" />
               <div>
                 <div class="font-medium text-slate-700">
-                  {{ props.row.site?.name || 'In Transit' }}
+                  {{ props.row.site?.name || $t('assets.in_transit') }}
                 </div>
                 <div class="text-caption font-mono text-primary">
-                  {{ props.row.room?.roomLabel || 'No Room' }}
+                  {{ props.row.room?.roomLabel || $t('assets.no_room') }}
                 </div>
               </div>
             </div>
@@ -107,11 +107,11 @@
                 <q-list style="min-width: 150px">
                   <q-item clickable @click="viewHistory(props.row.id)">
                     <q-item-section avatar><q-icon name="history" /></q-item-section>
-                    <q-item-section>Audit History</q-item-section>
+                    <q-item-section>{{ $t('assets.audit_history') }}</q-item-section>
                   </q-item>
                   <q-item clickable class="text-negative">
                     <q-item-section avatar><q-icon name="report_problem" /></q-item-section>
-                    <q-item-section>Flag Issue</q-item-section>
+                    <q-item-section>{{ $t('assets.flag_issue') }}</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -125,6 +125,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
 import { useDialog } from 'src/composables/useDialog';
@@ -138,6 +139,7 @@ const { pushDialog } = useDialog();
 const filter = ref('');
 const route = useRoute();
 const router = useRouter();
+const { t: $t } = useI18n();
 
 const selectedSiteId = computed(() => {
   const value = route.query.siteId;
@@ -169,38 +171,38 @@ const scopedRows = computed(() => {
 const columns: QTableColumn[] = [
   {
     name: 'serial',
-    label: 'Serial Number',
+    label: $t('assets.serial_number'),
     field: 'serialNumber',
     align: 'left',
     sortable: true,
   },
   {
     name: 'model',
-    label: 'Type / Model',
+    label: $t('assets.type_model'),
     field: (row) => row.type?.modelName,
     align: 'left',
     sortable: true,
   },
   {
     name: 'location',
-    label: 'Current Location',
+    label: $t('assets.current_location'),
     field: (row) => row.site?.name,
     align: 'left',
   },
   {
     name: 'status',
-    label: 'Status',
+    label: $t('assets.status'),
     field: 'status',
     align: 'center',
     sortable: true,
   },
   {
     name: 'hours',
-    label: 'Runtime (Hrs)',
+    label: $t('assets.runtime_hours'),
     field: 'totalHoursUsed',
     align: 'center',
     sortable: true,
-    format: (val) => `${val || 0} h`,
+    format: (val) => $t('assets.runtime_format', { value: val || 0 }),
   },
   {
     name: 'actions',

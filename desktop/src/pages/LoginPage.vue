@@ -18,22 +18,24 @@
           <div
             class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-widest"
           >
-            Secure Access
+            {{ $t('login.secure_access') }}
           </div>
-          <div class="mt-6 text-4xl font-black leading-tight">Welcome Back to FluxFlow</div>
+          <div class="mt-6 text-4xl font-black leading-tight">{{ $t('login.welcome') }}</div>
           <p class="mt-4 text-sm text-cyan-100">
-            Coordinate sites, assets, and supervisors with one unified operations hub.
+            {{ $t('login.subtitle') }}
           </p>
         </div>
         <div class="font-mono text-xs uppercase tracking-[0.2em] text-cyan-100">
-          Real-time Field Control
+          {{ $t('login.real_time') }}
         </div>
       </div>
 
       <div class="p-6 sm:p-8">
         <div class="q-mb-lg text-center">
           <q-icon name="hub" size="74px" color="primary" class="q-mb-sm" />
-          <div class="text-3xl font-black tracking-tight text-slate-800">FluxFlow Login</div>
+          <div class="text-3xl font-black tracking-tight text-slate-800">
+            {{ $t('login.page_title') }}
+          </div>
           <p class="mt-1 text-slate-600">{{ $t('login.credentials') }}</p>
         </div>
 

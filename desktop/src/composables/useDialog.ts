@@ -2,6 +2,7 @@ import type { DialogChainObject, QDialogProps } from 'quasar';
 import { Dialog } from 'quasar';
 import DialogComponent from 'components/dialog/DialogComponent.vue';
 import type { Component } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 type DialogEntry = {
   showDialog: (cmp: Component, props?: Record<string, any>) => DialogChainObject;
@@ -13,16 +14,18 @@ type DialogEntry = {
 const dialog_array: DialogEntry[] = [];
 
 export function useDialog() {
+  const { t } = useI18n();
+
   function deletePrompt(msg?: string, options?: Record<string, any>) {
     return Dialog.create({
       cancel: {
-        label: 'Cancel',
+        label: t('common.cancel'),
         'no-caps': true,
         flat: true,
         color: options?.cancel_color || 'primary',
       },
       ok: {
-        label: options?.ok_label || 'Delete',
+        label: options?.ok_label || t('common.delete'),
         color: options?.ok_color || 'negative',
         'no-caps': true,
         flat: true,
@@ -31,9 +34,9 @@ export function useDialog() {
       class: options?.class || 'dialog-delete',
       transitionShow: 'slide-up',
       transitionHide: 'slide-down',
-      message: msg || 'Are you sure you want to delete this?',
+      message: msg || t('dialogs.delete_confirm'),
       persistent: true,
-      title: (options?.title as string) || 'Confirm Deletion',
+      title: (options?.title as string) || t('dialogs.confirm_deletion'),
     });
   }
 
@@ -44,8 +47,8 @@ export function useDialog() {
     customRule?: (val: string) => boolean | string,
   ) {
     return Dialog.create({
-      cancel: { label: 'Cancel', 'no-caps': true, flat: true, color: 'negative' },
-      ok: { label: 'Confirm', color: 'blue', 'no-caps': true, flat: true },
+      cancel: { label: t('common.cancel'), 'no-caps': true, flat: true, color: 'negative' },
+      ok: { label: t('dialogs.confirm'), color: 'blue', 'no-caps': true, flat: true },
       prompt: {
         model: prompt_model,
         type: 'text',
@@ -58,12 +61,12 @@ export function useDialog() {
           return true;
         },
         rules: [
-          (val) => !!val || 'Field required',
+          (val) => !!val || t('errors.field_required'),
           ...(customRule
             ? [
                 (val: string) => {
                   const result = customRule(val);
-                  return result === true || result || 'Invalid input';
+                  return result === true || result || t('errors.invalid_input');
                 },
               ]
             : []),
@@ -71,9 +74,9 @@ export function useDialog() {
       },
       color: 'primary',
       html: true,
-      message: msg || 'Update value',
+      message: msg || t('dialogs.update_value'),
       persistent: true,
-      title: title || 'Confirm',
+      title: title || t('dialogs.confirm'),
     });
   }
 

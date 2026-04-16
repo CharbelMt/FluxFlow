@@ -1,24 +1,32 @@
 <template>
   <q-card flat class="bg-white overflow-hidden">
     <CardSectionTitle
-      :title="isEditMode ? 'Edit Supervisor' : 'Add Supervisor'"
+      :title="isEditMode ? $t('forms.supervisor.title_edit') : $t('forms.supervisor.title_create')"
       @close="props.onDialogCancel"
     />
 
     <q-card-section class="q-pa-lg q-gutter-y-md">
       <q-input
         v-model="form.full_name"
-        label="Full Name"
+        :label="$t('forms.supervisor.full_name')"
         outlined
         autofocus
         :disable="submitting"
       />
 
-      <q-input v-model="form.email" label="Email" outlined type="email" :disable="submitting" />
+      <q-input
+        v-model="form.email"
+        :label="$t('forms.supervisor.email')"
+        outlined
+        type="email"
+        :disable="submitting"
+      />
 
       <q-input
         v-model="form.password"
-        :label="isEditMode ? 'Password (optional to change)' : 'Temporary Password'"
+        :label="
+          isEditMode ? $t('forms.supervisor.password_edit') : $t('forms.supervisor.password_create')
+        "
         outlined
         type="password"
         :disable="submitting"
@@ -28,7 +36,7 @@
     <q-card-actions align="right" class="q-pa-lg bg-slate-50">
       <q-btn
         flat
-        label="Discard"
+        :label="$t('forms.supervisor.discard')"
         color="slate-400"
         :disable="submitting"
         @click="props.onDialogCancel"
@@ -37,7 +45,11 @@
         unelevated
         rounded
         color="primary"
-        :label="isEditMode ? 'Save Changes' : 'Create Supervisor'"
+        :label="
+          isEditMode
+            ? $t('forms.supervisor.save_changes')
+            : $t('forms.supervisor.create_supervisor')
+        "
         class="q-px-xl"
         :loading="submitting"
         @click="handleSubmit"
@@ -49,6 +61,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import CardSectionTitle from 'components/dialog/CardSectionTitle.vue';
 import { useAuthStore } from 'src/stores/auth-store';
 import { useSupervisorStore } from 'src/stores/supervisor-store';
@@ -73,6 +86,7 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const supervisorStore = useSupervisorStore();
 const submitting = ref(false);
+const { t: $t } = useI18n();
 
 const isEditMode = computed(
   () => props.componentProps?.mode === 'edit' && !!props.componentProps?.supervisor?.id,
@@ -94,17 +108,17 @@ async function handleSubmit() {
   const password = form.value.password.trim();
 
   if (!managerId) {
-    $q.notify({ color: 'negative', message: 'Unable to resolve manager profile.' });
+    $q.notify({ color: 'negative', message: $t('errors.manager_error') });
     return;
   }
 
   if (!fullName || !email) {
-    $q.notify({ color: 'negative', message: 'Name and email are required.' });
+    $q.notify({ color: 'negative', message: $t('errors.name_email_required') });
     return;
   }
 
   if (!isEditMode.value && !password) {
-    $q.notify({ color: 'negative', message: 'Temporary password is required.' });
+    $q.notify({ color: 'negative', message: $t('errors.temp_password_required') });
     return;
   }
 
@@ -127,12 +141,14 @@ async function handleSubmit() {
 
     $q.notify({
       color: 'positive',
-      message: isEditMode.value ? 'Supervisor updated.' : 'Supervisor created.',
+      message: isEditMode.value
+        ? $t('messages.supervisor_updated')
+        : $t('messages.supervisor_created'),
     });
     props.onDialogOK(result);
   } catch (error) {
     console.error(error);
-    $q.notify({ color: 'negative', message: 'Failed to save supervisor.' });
+    $q.notify({ color: 'negative', message: $t('errors.save_supervisor_failed') });
   } finally {
     submitting.value = false;
   }

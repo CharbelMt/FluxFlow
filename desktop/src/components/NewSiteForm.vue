@@ -1,20 +1,26 @@
 <template>
   <q-card flat class="bg-white overflow-hidden">
     <CardSectionTitle
-      :title="isEditMode ? 'Edit Deployment Zone' : 'Create Deployment Zone'"
+      :title="isEditMode ? $t('forms.new_site.title_edit') : $t('forms.new_site.title_create')"
       @close="props.onDialogCancel"
     />
 
     <q-card-section class="q-pa-lg q-gutter-y-lg">
       <div class="column q-gutter-sm">
-        <div class="text-overline text-primary font-bold">Site Details</div>
-        <q-input v-model="form.name" label="Site Name" outlined autofocus :disable="submitting" />
+        <div class="text-overline text-primary font-bold">{{ $t('forms.new_site.details') }}</div>
+        <q-input
+          v-model="form.name"
+          :label="$t('forms.new_site.site_name')"
+          outlined
+          autofocus
+          :disable="submitting"
+        />
         <q-input
           v-model="form.location_gps"
-          label="Location (GPS)"
+          :label="$t('forms.new_site.location_gps')"
           outlined
           :disable="submitting"
-          hint="Optional. Example: 14.5995,120.9842"
+          :hint="$t('forms.new_site.location_hint')"
         />
 
         <q-select
@@ -27,7 +33,7 @@
           multiple
           use-chips
           outlined
-          label="Assigned Supervisors"
+          :label="$t('forms.new_site.assigned_supervisors')"
           :disable="submitting || loadingSupervisors"
         />
       </div>
@@ -36,7 +42,7 @@
     <q-card-actions align="right" class="q-pa-lg bg-slate-50">
       <q-btn
         flat
-        label="Discard"
+        :label="$t('forms.new_site.discard')"
         color="slate-400"
         :disable="submitting"
         @click="props.onDialogCancel"
@@ -45,7 +51,7 @@
         unelevated
         rounded
         color="primary"
-        :label="isEditMode ? 'Save Changes' : 'Create Site'"
+        :label="isEditMode ? $t('forms.new_site.save_changes') : $t('forms.new_site.create_site')"
         class="q-px-xl"
         :loading="submitting"
         @click="handleSubmission"
@@ -57,6 +63,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import CardSectionTitle from 'components/dialog/CardSectionTitle.vue';
 import { useAuthStore } from 'src/stores/auth-store';
 import { useSiteStore } from 'src/stores/site-store';
@@ -82,6 +89,7 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const siteStore = useSiteStore();
 const supervisorStore = useSupervisorStore();
+const { t: $t } = useI18n();
 const submitting = ref(false);
 const loadingSupervisors = ref(false);
 const selectedSupervisorIds = ref<string[]>([]);
@@ -128,14 +136,14 @@ async function handleSubmission() {
   const managerId = authStore.user?.id as string | undefined;
 
   if (!name) {
-    $q.notify({ color: 'negative', message: 'Site name is required.' });
+    $q.notify({ color: 'negative', message: $t('errors.site_name_required') });
     return;
   }
 
   if (!managerId) {
     $q.notify({
       color: 'negative',
-      message: 'Unable to resolve manager profile. Please sign in again.',
+      message: $t('errors.manager_error'),
     });
     return;
   }
@@ -165,12 +173,14 @@ async function handleSubmission() {
 
     $q.notify({
       color: 'positive',
-      message: isEditMode.value ? 'Deployment zone updated.' : 'Deployment zone created.',
+      message: isEditMode.value
+        ? $t('messages.deploy_zone_updated')
+        : $t('messages.deploy_zone_created'),
     });
     props.onDialogOK(result);
   } catch (error) {
     console.error(error);
-    $q.notify({ color: 'negative', message: 'Failed to create deployment zone.' });
+    $q.notify({ color: 'negative', message: $t('errors.deploy_zone_failed') });
   } finally {
     submitting.value = false;
   }
@@ -184,7 +194,7 @@ onMounted(async () => {
     await loadSupervisorOptions(managerId);
   } catch (error) {
     console.error(error);
-    $q.notify({ color: 'negative', message: 'Failed to load supervisors.' });
+    $q.notify({ color: 'negative', message: $t('errors.failed_load_supervisors') });
   }
 });
 </script>

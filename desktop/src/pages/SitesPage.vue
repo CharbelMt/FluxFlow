@@ -3,12 +3,14 @@
     <div class="mx-auto w-full max-w-7xl">
       <div class="q-mb-lg rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
         <div class="row items-center justify-between">
-          <div class="text-sm font-semibold text-slate-600">Deployment actions</div>
+          <div class="text-sm font-semibold text-slate-600">
+            {{ $t('sites.deployment_actions') }}
+          </div>
           <q-btn
             color="primary"
             rounded
             unelevated
-            label="New Site"
+            :label="$t('sites.new_site')"
             :icon="mdiPlus"
             class="rounded-xl px-3 py-2 font-semibold"
             @click="openNewSiteDialog"
@@ -33,13 +35,15 @@
 
               <div class="q-mt-xs row items-center text-slate-600">
                 <q-icon :name="mdiPackageVariantClosed" size="16px" class="q-mr-xs" />
-                <span>{{ getSiteAssetCount(site.id) }} assets deployed</span>
+                <span>{{
+                  $t('sites.assets_deployed', { count: getSiteAssetCount(site.id) })
+                }}</span>
               </div>
             </q-card-section>
 
             <q-card-section>
               <div class="q-mb-sm font-mono text-[11px] uppercase tracking-[0.17em] text-slate-400">
-                Storage Rooms (QR Tracked)
+                {{ $t('sites.storage_rooms') }}
               </div>
               <q-list dense>
                 <q-item v-for="room in site.storageRooms" :key="room.id" class="q-px-none">
@@ -49,7 +53,7 @@
                   <q-item-section>
                     <q-item-label class="font-semibold">{{ room.room_label }}</q-item-label>
                     <q-item-label caption class="font-mono text-[10px] text-slate-500">
-                      UID: {{ room.room_tag_uid }}
+                      {{ $t('sites.uid_label') }} {{ room.room_tag_uid }}
                     </q-item-label>
                   </q-item-section>
                 </q-item>
@@ -60,7 +64,7 @@
               <q-btn
                 flat
                 color="slate-600"
-                label="Edit"
+                :label="$t('sites.edit')"
                 no-caps
                 class="rounded-lg"
                 @click="openEditSiteDialog(site)"
@@ -68,7 +72,7 @@
               <q-btn
                 flat
                 color="primary"
-                label="Manage Assets"
+                :label="$t('sites.manage_assets')"
                 no-caps
                 class="rounded-lg"
                 @click="manageSiteAssets(site.id)"
@@ -83,6 +87,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useSiteStore } from 'src/stores/site-store';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useDialog } from 'src/composables/useDialog';
@@ -94,6 +99,7 @@ const siteStore = useSiteStore();
 const assetStore = useAssetStore();
 const { pushDialog } = useDialog();
 const router = useRouter();
+const { t: $t } = useI18n();
 
 const assetsBySite = computed(() => {
   const counts = new Map<string, number>();
@@ -116,7 +122,7 @@ function getSiteAssetCount(siteId: string) {
 }
 
 function getSiteLocation(site: { location_gps?: string; locationGps?: string | null }) {
-  return site.location_gps || site.locationGps || 'Location not set';
+  return site.location_gps || site.locationGps || $t('sites.location_not_set');
 }
 
 function openNewSiteDialog() {

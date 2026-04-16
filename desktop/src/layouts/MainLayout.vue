@@ -47,7 +47,7 @@
             <q-icon name="hub" size="24px" color="white" />
           </div>
           <div class="text-2xl font-black tracking-tighter text-slate-800">
-            Flux<span class="text-cyan-700">Flow</span>
+            {{ $t('labels.FluxFlow') }}
           </div>
         </div>
 

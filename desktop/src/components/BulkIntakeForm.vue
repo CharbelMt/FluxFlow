@@ -1,14 +1,14 @@
 <template>
   <q-card flat class="bg-white overflow-hidden">
-    <CardSectionTitle title="Bulk Asset Intake" @close="onDialogCancel" />
+    <CardSectionTitle :title="$t('forms.bulk_intake.title')" @close="onDialogCancel" />
 
     <q-card-section class="q-pa-lg q-gutter-y-lg">
       <div class="column q-gutter-sm">
-        <div class="text-overline text-primary font-bold">1. Deployment Zone</div>
+        <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step1') }}</div>
         <div class="row q-col-gutter-md">
           <q-select
             v-model="form.site_id"
-            label="Target Site"
+            :label="$t('forms.bulk_intake.target_site')"
             :options="siteStore.sites"
             option-value="id"
             option-label="name"
@@ -19,7 +19,7 @@
           />
           <q-select
             v-model="form.room_id"
-            label="Target Room"
+            :label="$t('forms.bulk_intake.target_room')"
             :options="availableRooms"
             option-value="id"
             option-label="roomLabel"
@@ -36,14 +36,21 @@
 
       <div class="column q-gutter-sm">
         <div class="row items-center justify-between">
-          <div class="text-overline text-primary font-bold">2. Specifications</div>
-          <q-toggle v-model="is_new_type" label="Create New Model" dense color="primary" />
+          <div class="text-overline text-primary font-bold">
+            {{ $t('forms.bulk_intake.step2') }}
+          </div>
+          <q-toggle
+            v-model="is_new_type"
+            :label="$t('forms.bulk_intake.create_new_model')"
+            dense
+            color="primary"
+          />
         </div>
 
         <div v-if="!is_new_type">
           <q-select
             v-model="form.type_id"
-            label="Select Existing Model"
+            :label="$t('forms.bulk_intake.select_existing_model')"
             :options="typeOptions"
             outlined
             emit-value
@@ -55,12 +62,22 @@
           v-else
           class="q-pa-md bg-slate-50 rounded-lg border border-dashed border-slate-300 q-gutter-sm"
         >
-          <q-input v-model="form.new_type.model_name" label="Model Name" dense outlined />
-          <q-input v-model="form.new_type.manufacturer" label="Manufacturer" dense outlined />
+          <q-input
+            v-model="form.new_type.model_name"
+            :label="$t('forms.bulk_intake.model_name')"
+            dense
+            outlined
+          />
+          <q-input
+            v-model="form.new_type.manufacturer"
+            :label="$t('forms.bulk_intake.manufacturer')"
+            dense
+            outlined
+          />
           <div class="row q-col-gutter-sm">
             <q-input
               v-model="form.new_type.category"
-              label="Category"
+              :label="$t('forms.bulk_intake.category')"
               dense
               outlined
               class="col-6"
@@ -68,7 +85,7 @@
             <q-input
               v-model.number="form.new_type.maintenance_interval_hrs"
               type="number"
-              label="Interval (Hrs)"
+              :label="$t('forms.bulk_intake.interval_hours')"
               dense
               outlined
               class="col-6"
@@ -80,25 +97,30 @@
       <q-separator />
 
       <div class="column q-gutter-sm">
-        <div class="text-overline text-primary font-bold">3. Serial Numbers</div>
+        <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step3') }}</div>
         <q-input
           v-model="serial_input"
           type="textarea"
           outlined
-          placeholder="Paste one serial number per line..."
-          hint="Each line results in a unique asset instance."
+          :placeholder="$t('forms.bulk_intake.serial_placeholder')"
+          :hint="$t('forms.bulk_intake.serial_hint')"
           rows="5"
         />
       </div>
     </q-card-section>
 
     <q-card-actions align="right" class="q-pa-lg bg-slate-50">
-      <q-btn flat label="Discard" color="slate-400" @click="onDialogCancel" />
+      <q-btn
+        flat
+        :label="$t('forms.bulk_intake.discard')"
+        color="slate-400"
+        @click="onDialogCancel"
+      />
       <q-btn
         unelevated
         rounded
         color="primary"
-        label="Finalize Allocation"
+        :label="$t('forms.bulk_intake.finalize')"
         class="q-px-xl"
         :loading="submitting"
         @click="handleSubmission"
@@ -109,19 +131,21 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
 import { useQuasar } from 'quasar';
 import CardSectionTitle from 'components/dialog/CardSectionTitle.vue';
 
 const props = defineProps<{
-  onDialogOK: (payload: any) => void;
+  onDialogOK: (payload: unknown) => void;
   onDialogCancel: () => void;
 }>();
 
 const $q = useQuasar();
 const assetStore = useAssetStore();
 const siteStore = useSiteStore();
+const { t: $t } = useI18n();
 
 const is_new_type = ref(false);
 const submitting = ref(false);
@@ -159,7 +183,7 @@ async function handleSubmission() {
     .filter(Boolean);
 
   if (serials.length === 0 || !form.value.site_id || !form.value.room_id) {
-    $q.notify({ color: 'negative', message: 'Incomplete allocation data.' });
+    $q.notify({ color: 'negative', message: $t('errors.incomplete_data') });
     return;
   }
 
@@ -177,7 +201,10 @@ async function handleSubmission() {
     };
 
     const result = await assetStore.bulkCreateAssets(payload);
-    $q.notify({ color: 'positive', message: `${result.count} assets integrated successfully.` });
+    $q.notify({
+      color: 'positive',
+      message: $t('messages.assets_integrated', { count: result.count }),
+    });
     props.onDialogOK(result);
   } catch (err) {
     console.error(err);

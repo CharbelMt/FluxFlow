@@ -34,11 +34,13 @@
         <div class="xl:col-span-2">
           <q-card flat bordered class="h-full rounded-2xl border-slate-200 bg-white shadow-sm">
             <q-card-section class="row items-center justify-between q-px-lg q-py-md">
-              <div class="text-lg font-black text-slate-800 tracking-tight">Operational Sites</div>
+              <div class="text-lg font-black text-slate-800 tracking-tight">
+                {{ $t('dashboard.operational_sites') }}
+              </div>
               <q-btn
                 flat
                 color="cyan-7"
-                label="View All"
+                :label="$t('dashboard.view_all')"
                 :to="{ name: 'sites' }"
                 no-caps
                 class="rounded-xl font-bold"
@@ -69,14 +71,16 @@
                     color="cyan-7"
                     class="font-black tracking-widest text-[10px] uppercase px-3"
                   >
-                    Active
+                    {{ $t('dashboard.active') }}
                   </q-chip>
                 </q-item-section>
               </q-item>
 
               <div v-if="siteStore.sites.length === 0" class="q-pa-xl text-center">
                 <q-icon name="cloud_off" size="48px" color="slate-200" />
-                <div class="text-slate-400 q-mt-sm font-medium">No active sites detected.</div>
+                <div class="text-slate-400 q-mt-sm font-medium">
+                  {{ $t('dashboard.no_active_sites') }}
+                </div>
               </div>
             </q-list>
           </q-card>
@@ -97,9 +101,11 @@
             <q-card-section class="q-pa-lg">
               <div class="row items-center justify-between">
                 <div>
-                  <div class="text-lg font-black tracking-tight text-cyan-700">System Health</div>
+                  <div class="text-lg font-black tracking-tight text-cyan-700">
+                    {{ $t('dashboard.system_health') }}
+                  </div>
                   <div class="text-xs font-bold uppercase tracking-widest text-cyan-600 opacity-90">
-                    Network Sync Active
+                    {{ $t('dashboard.network_sync_active') }}
                   </div>
                 </div>
                 <q-chip
@@ -108,7 +114,7 @@
                   text-color="cyan-8"
                   class="font-black uppercase tracking-wide"
                 >
-                  Stable
+                  {{ $t('dashboard.stable') }}
                 </q-chip>
               </div>
             </q-card-section>
@@ -123,7 +129,7 @@
                 track-color="cyan-8"
                 class="q-ma-md font-black text-xs text-cyan-700"
               >
-                Online
+                {{ $t('dashboard.online') }}
               </q-circular-progress>
             </q-card-section>
 
@@ -132,7 +138,7 @@
                 unelevated
                 color="white"
                 text-color="cyan-7"
-                label="New Audit Report"
+                :label="$t('dashboard.new_audit_report')"
                 class="rounded-xl px-4 py-3 font-black shadow-lg sm:flex-1"
                 no-caps
                 @click="openAuditReport"
@@ -140,7 +146,7 @@
               <q-btn
                 flat
                 color="white"
-                label="Run Maintenance Check"
+                :label="$t('dashboard.run_maintenance_check')"
                 class="rounded-xl border border-white/30 px-4 py-2 opacity-90 hover:opacity-100 sm:flex-1"
                 no-caps
                 :loading="runningMaintenanceCheck"
@@ -158,6 +164,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import { useSiteStore } from 'src/stores/site-store';
 import { useAssetStore } from 'src/stores/asset-store';
 import {
@@ -171,11 +178,12 @@ const $q = useQuasar();
 const router = useRouter();
 const siteStore = useSiteStore();
 const assetStore = useAssetStore();
+const { t: $t } = useI18n();
 const runningMaintenanceCheck = ref(false);
 
 const summary_metrics = computed(() => [
   {
-    label: 'Total Sites',
+    label: $t('dashboard.total_sites'),
     value: siteStore.sites.length,
     icon: mdiMapMarkerRadius,
     iconColor: 'cyan-8',
@@ -183,7 +191,7 @@ const summary_metrics = computed(() => [
     valueClass: 'text-cyan-800',
   },
   {
-    label: 'Asset Inventory',
+    label: $t('dashboard.asset_inventory'),
     value: assetStore.assets.length,
     icon: mdiPackageVariantClosed,
     iconColor: 'blue-8',
@@ -191,7 +199,7 @@ const summary_metrics = computed(() => [
     valueClass: 'text-blue-800',
   },
   {
-    label: 'Repair Needed',
+    label: $t('dashboard.repair_needed'),
     value: assetStore.assets.filter((a) => a.status === 'repair').length,
     icon: mdiAlertDecagram,
     iconColor: 'orange-8',
@@ -199,7 +207,7 @@ const summary_metrics = computed(() => [
     valueClass: 'text-orange-800',
   },
   {
-    label: 'System Load',
+    label: $t('dashboard.system_load'),
     value: '98%',
     icon: mdiViewGridPlus,
     iconColor: 'green-8',
@@ -224,12 +232,14 @@ async function runMaintenanceCheck() {
     $q.notify({
       color: 'cyan-8',
       message:
-        pending > 0 ? `Alert: ${pending} assets require attention.` : 'System Integrity Verified.',
+        pending > 0
+          ? $t('dashboard.alert_assets_attention', { pending })
+          : $t('dashboard.system_integrity_verified'),
       icon: pending > 0 ? 'warning' : 'verified',
       position: 'bottom-right',
     });
   } catch {
-    $q.notify({ color: 'negative', message: 'Sync failed' });
+    $q.notify({ color: 'negative', message: $t('dashboard.sync_failed') });
   } finally {
     runningMaintenanceCheck.value = false;
   }
