@@ -1,8 +1,8 @@
 <template>
   <q-page class="q-pa-md sm:q-pa-lg">
     <div class="mx-auto w-full max-w-7xl">
-      <div class="q-mb-md rounded-2xl border border-slate-300 bg-slate-50 p-3 shadow-sm">
-        <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="q-mb-md rounded-2xl border border-slate-300 bg-slate-50 p-4 shadow-sm">
+        <div class="flex flex-col gap-3">
           <div class="row items-center q-gutter-sm">
             <q-chip
               v-if="selectedSiteName"
@@ -20,21 +20,60 @@
               color="primary"
               :label="$t('assets.clear_scope')"
               @click="clearSiteScope"
+              rounded
             />
           </div>
 
-          <div class="row items-center q-gutter-sm">
+          <div class="row items-center q-gutter-md">
             <q-input
               v-model="filter"
               outlined
               dense
               :placeholder="$t('assets.search_placeholder')"
-              class="w-full rounded-xl bg-white sm:w-72"
+              class="grow rounded-xl bg-white"
             >
               <template v-slot:prepend>
                 <q-icon name="search" color="primary" />
               </template>
             </q-input>
+
+            <q-btn flat dense icon="tune" color="slate-600" class="rounded-lg" rounded>
+              <q-menu>
+                <q-list style="min-width: 150px">
+                  <q-item-label header>{{ $t('assets.filter_by_status') }}</q-item-label>
+                  <q-item clickable @click="toggleStatusFilter('on_site')">
+                    <q-item-section avatar>
+                      <q-checkbox
+                        :model-value="statusFilters.includes('on_site')"
+                        color="green-8"
+                        @click.stop="toggleStatusFilter('on_site')"
+                      />
+                    </q-item-section>
+                    <q-item-section>{{ $t('assets.filter_on_site') }}</q-item-section>
+                  </q-item>
+                  <q-item clickable @click="toggleStatusFilter('repair')">
+                    <q-item-section avatar>
+                      <q-checkbox
+                        :model-value="statusFilters.includes('repair')"
+                        color="red-8"
+                        @click.stop="toggleStatusFilter('repair')"
+                      />
+                    </q-item-section>
+                    <q-item-section>{{ $t('assets.filter_repair_needed') }}</q-item-section>
+                  </q-item>
+                  <q-item clickable @click="toggleStatusFilter('stored')">
+                    <q-item-section avatar>
+                      <q-checkbox
+                        :model-value="statusFilters.includes('stored')"
+                        color="blue-8"
+                        @click.stop="toggleStatusFilter('stored')"
+                      />
+                    </q-item-section>
+                    <q-item-section>{{ $t('assets.filter_stored') }}</q-item-section>
+                  </q-item>
+                </q-list>
+              </q-menu>
+            </q-btn>
 
             <q-btn
               color="primary"
@@ -57,7 +96,7 @@
         row-key="id"
         flat
         bordered
-        class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-sm"
+        class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-md"
         :pagination="{ rowsPerPage: 10 }"
       >
         <template v-slot:loading>
@@ -102,7 +141,7 @@
 
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="text-right">
-            <q-btn flat round dense icon="more_vert" color="slate-400">
+            <q-btn flat round dense icon="more_vert" color="slate-400" rounded>
               <q-menu auto-close>
                 <q-list style="min-width: 150px">
                   <q-item clickable @click="viewHistory(props.row.id)">
@@ -137,6 +176,7 @@ const assetStore = useAssetStore();
 const siteStore = useSiteStore();
 const { pushDialog } = useDialog();
 const filter = ref('');
+const statusFilters = ref<string[]>([]);
 const route = useRoute();
 const router = useRouter();
 const { t: $t } = useI18n();
@@ -220,6 +260,15 @@ function openIntake() {
       persistent: true,
     },
   );
+}
+
+function toggleStatusFilter(status: string) {
+  const index = statusFilters.value.indexOf(status);
+  if (index > -1) {
+    statusFilters.value.splice(index, 1);
+  } else {
+    statusFilters.value.push(status);
+  }
 }
 
 async function clearSiteScope() {
