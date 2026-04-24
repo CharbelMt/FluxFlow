@@ -28,9 +28,20 @@
           isEditMode ? $t('forms.supervisor.password_edit') : $t('forms.supervisor.password_create')
         "
         outlined
-        type="password"
+        :type="isPasswordVisible ? 'text' : 'password'"
         :disable="submitting"
-      />
+        :rules="passwordRules"
+        autocomplete="new-password"
+        lazy-rules
+      >
+        <template #append>
+          <q-icon
+            :name="isPasswordVisible ? 'visibility_off' : 'visibility'"
+            class="cursor-pointer text-slate-400"
+            @click="isPasswordVisible = !isPasswordVisible"
+          />
+        </template>
+      </q-input>
     </q-card-section>
 
     <q-card-actions align="right" class="q-pa-lg">
@@ -87,6 +98,7 @@ const $q = useQuasar();
 const authStore = useAuthStore();
 const supervisorStore = useSupervisorStore();
 const submitting = ref(false);
+const isPasswordVisible = ref(false);
 const { t: $t } = useI18n();
 
 const isEditMode = computed(
@@ -101,6 +113,17 @@ const form = ref({
   email: props.componentProps?.supervisor?.email || '',
   password: '',
 });
+
+const passwordRules = [
+  (val: string) => {
+    if (isEditMode.value && !val) return true;
+    return !!val || $t('errors.temp_password_required');
+  },
+  (val: string) => {
+    if (isEditMode.value && !val) return true;
+    return val.length >= 6 || $t('errors.supervisor_password_min');
+  },
+];
 
 async function handleSubmit() {
   const managerId = authStore.user?.id as string | undefined;

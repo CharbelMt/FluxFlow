@@ -148,6 +148,10 @@
                     <q-item-section avatar><q-icon name="history" /></q-item-section>
                     <q-item-section>{{ $t('assets.audit_history') }}</q-item-section>
                   </q-item>
+                  <q-item clickable @click="generateAssetQr(props.row)">
+                    <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
+                    <q-item-section>{{ $t('assets.generate_qr') }}</q-item-section>
+                  </q-item>
                   <q-item clickable class="text-negative">
                     <q-item-section avatar><q-icon name="report_problem" /></q-item-section>
                     <q-item-section>{{ $t('assets.flag_issue') }}</q-item-section>
@@ -171,10 +175,12 @@ import { useDialog } from 'src/composables/useDialog';
 import BulkIntakeForm from 'components/BulkIntakeForm.vue';
 import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 
 const assetStore = useAssetStore();
 const siteStore = useSiteStore();
 const { pushDialog } = useDialog();
+const $q = useQuasar();
 const filter = ref('');
 const statusFilters = ref<string[]>([]);
 const route = useRoute();
@@ -305,6 +311,72 @@ function getStatusTextColor(status: string) {
 
 function viewHistory(assetId: string) {
   console.log(`Navigating to history for ${assetId}`);
+}
+
+function buildQrPreviewHtml(params: {
+  title: string;
+  subtitle: string;
+  qrMarkup: string;
+  assetId: string;
+  serialNumber: string;
+}) {
+  return `<!doctype html><html><head><title>${params.title}</title><style>
+    :root { color-scheme: light; }
+    body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; }
+    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 32px; box-sizing: border-box; }
+    .card { width: min(420px, 100%); background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 20px 50px rgba(8, 15, 34, 0.12); padding: 28px; text-align: center; }
+    .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .svg { display: grid; place-items: center; background: #f8fafc; border-radius: 20px; padding: 16px; }
+    .meta { margin-top: 18px; font-size: 12px; color: #475569; line-height: 1.6; }
+    @media print { body { background: white; } .card { box-shadow: none; border: none; } }
+  </style></head><body><div class="wrap"><div class="card"><div class="title">${params.title}</div><div class="sub">${params.subtitle}</div><div class="svg">${params.qrMarkup}</div><div class="meta">${$t('assets.qr_meta', { assetId: params.assetId, serialNumber: params.serialNumber })}</div></div></div></body></html>`;
+}
+
+async function generateAssetQr(asset: {
+  id: string;
+  serialNumber: string;
+  type?: { modelName?: string };
+}) {
+  const qrWindow = window.open('', '_blank', 'noopener,noreferrer,width=520,height=760');
+
+  if (!qrWindow) {
+    $q.notify({ color: 'negative', message: $t('errors.popup_blocked') });
+    return;
+  }
+
+  qrWindow.document.open();
+  qrWindow.document.write(
+    buildQrPreviewHtml({
+      title: $t('assets.qr_code'),
+      subtitle: asset.type?.modelName || asset.serialNumber,
+      qrMarkup: $t('assets.qr_loading'),
+      assetId: asset.id,
+      serialNumber: asset.serialNumber,
+    }),
+  );
+  qrWindow.document.close();
+
+  try {
+    const response = await assetStore.fetchAssetQrCode(asset.id);
+    const html = buildQrPreviewHtml({
+      title: $t('assets.qr_code'),
+      subtitle: asset.type?.modelName || asset.serialNumber,
+      qrMarkup: response.qrSvg,
+      assetId: asset.id,
+      serialNumber: asset.serialNumber,
+    });
+
+    qrWindow.document.open();
+    qrWindow.document.write(html);
+    qrWindow.document.close();
+    qrWindow.focus();
+    qrWindow.print();
+  } catch (error) {
+    qrWindow.close();
+    console.error(error);
+    $q.notify({ color: 'negative', message: $t('errors.qr_generation_failed') });
+  }
 }
 
 onMounted(async () => {

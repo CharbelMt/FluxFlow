@@ -35,6 +35,17 @@ const routes: RouteRecordRaw[] = [
         name: 'supervisors',
         component: () => import('pages/SupervisorManagementPage.vue'),
       },
+      {
+        path: 'scanner',
+        name: 'scanner',
+        component: () => import('pages/ScannerPage.vue'),
+        meta: { allowedRoles: ['supervisor'] },
+      },
+      {
+        path: 'account',
+        name: 'account',
+        component: () => import('pages/AccountPage.vue'),
+      },
     ],
   },
 

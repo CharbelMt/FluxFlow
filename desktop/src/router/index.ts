@@ -45,6 +45,11 @@ export default defineRouter(function (/* { store, ssrContext } */) {
       return '/';
     }
 
+    const allowed_roles = to.meta.allowedRoles as string[] | undefined;
+    if (allowed_roles && authStore.user && !allowed_roles.includes(authStore.user.role)) {
+      return '/dashboard';
+    }
+
     return true;
   });
 

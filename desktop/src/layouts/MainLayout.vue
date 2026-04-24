@@ -7,7 +7,7 @@
     <q-header class="bg-cyan-700 text-white border-b border-cyan-800 shadow-none">
       <q-toolbar class="q-py-md">
         <q-btn
-          v-if="!route.meta.hideMenu"
+          v-if="!route.meta.hideMenu && !$q.screen.xs"
           flat
           dense
           :icon="mdiMenu"
@@ -95,9 +95,9 @@
     <q-footer v-if="$q.screen.xs" class="bg-white/90 backdrop-blur-lg border-t border-slate-200">
       <q-tabs
         no-caps
-        active-color="cyan-700"
+        active-color="white"
         indicator-color="cyan-700"
-        class="text-slate-400 q-pb-safe"
+        class="mobile-tabs text-slate-400 q-pb-safe"
       >
         <q-route-tab
           v-for="tab in tabs"
@@ -105,6 +105,7 @@
           :to="{ name: tab.name }"
           :icon="tab.icon"
           :label="tab.label"
+          class="mobile-tab"
         />
       </q-tabs>
     </q-footer>
@@ -129,8 +130,10 @@ import {
   mdiMapMarkerRadius,
   mdiPackageVariantClosed,
   mdiAccountSupervisor,
+  mdiAccountCircle,
   mdiLogout,
   mdiMenu,
+  mdiQrcodeScan,
 } from '@quasar/extras/mdi-v7';
 
 const route = useRoute();
@@ -145,6 +148,7 @@ const tabs = computed(() => {
     { name: 'dashboard', label: t('navigation.dashboard'), icon: mdiViewDashboard },
     { name: 'sites', label: t('navigation.sites'), icon: mdiMapMarkerRadius },
     { name: 'assets', label: t('navigation.assets'), icon: mdiPackageVariantClosed },
+    { name: 'account', label: t('navigation.account'), icon: mdiAccountCircle },
   ];
 
   if (authStore.user?.role === 'manager') {
@@ -152,6 +156,14 @@ const tabs = computed(() => {
       name: 'supervisors',
       label: t('navigation.supervisors'),
       icon: mdiAccountSupervisor,
+    });
+  }
+
+  if (authStore.user?.role === 'supervisor') {
+    base_tabs.push({
+      name: 'scanner',
+      label: t('navigation.scanner'),
+      icon: mdiQrcodeScan,
     });
   }
 
@@ -185,6 +197,16 @@ async function handleLogout() {
 .nav-item:hover:not(.nav-active) {
   background: #ecfeff; /* cyan-50 */
   color: #0e7490;
+}
+
+.mobile-tab {
+  border-radius: 10px;
+  margin: 6px 4px;
+}
+
+.mobile-tab.q-router-link--exact-active {
+  background: #0e7490;
+  color: white !important;
 }
 
 /* Smooth Navigation */

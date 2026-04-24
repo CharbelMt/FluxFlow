@@ -58,6 +58,26 @@
           </q-td>
         </template>
 
+        <template v-slot:body-cell-sites="props">
+          <q-td :props="props">
+            <div v-if="getAssignedSiteNames(props.row.id).length > 0" class="flex flex-wrap gap-1">
+              <q-chip
+                v-for="siteName in getAssignedSiteNames(props.row.id)"
+                :key="`${props.row.id}-${siteName}`"
+                size="sm"
+                color="teal-1"
+                text-color="teal-9"
+                class="font-semibold"
+              >
+                {{ siteName }}
+              </q-chip>
+            </div>
+            <div v-else class="text-caption text-slate-400">
+              {{ $t('supervisors.no_sites_assigned') }}
+            </div>
+          </q-td>
+        </template>
+
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="text-right">
             <q-btn
@@ -109,8 +129,32 @@ const columns: QTableColumn[] = [
     align: 'left',
     sortable: true,
   },
+  {
+    name: 'sites',
+    label: $t('supervisors.assigned_sites_column'),
+    field: 'id',
+    align: 'left',
+    sortable: false,
+  },
   { name: 'actions', label: '', field: 'id', align: 'right' },
 ];
+
+const assignedSitesBySupervisor = computed(() => {
+  const map = new Map<string, string[]>();
+
+  supervisorStore.sites.forEach((site) => {
+    site.supervisors.forEach((entry) => {
+      const supervisorId = entry.supervisor?.id || entry.supervisorId;
+      if (!supervisorId) return;
+
+      const list = map.get(supervisorId) || [];
+      if (!list.includes(site.name)) list.push(site.name);
+      map.set(supervisorId, list);
+    });
+  });
+
+  return map;
+});
 
 const filteredSupervisors = computed(() => {
   const term = filter.value.trim().toLowerCase();
@@ -153,6 +197,10 @@ function openEditDialog(supervisor: { id: string; fullName: string; email: strin
   });
 }
 
+function getAssignedSiteNames(supervisorId: string) {
+  return assignedSitesBySupervisor.value.get(supervisorId) || [];
+}
+
 async function loadSupervisors() {
   const managerId = authStore.user?.id as string | undefined;
   if (!managerId) {
@@ -161,7 +209,7 @@ async function loadSupervisors() {
   }
 
   try {
-    await supervisorStore.fetchSupervisors(managerId);
+    await supervisorStore.fetchManagerSupervisorData(managerId);
   } catch (error) {
     console.error(error);
     $q.notify({ color: 'negative', message: $t('supervisors.failed_load_supervisors') });

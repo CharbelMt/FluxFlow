@@ -10,7 +10,7 @@
   >
     <component
       :is="componentToRender"
-      class="pb-safe-1 rounded-xl! w-100%"
+      class="dialog-shell pb-safe-1 rounded-xl w-100"
       v-bind="{
         onDialogOK,
         onDialogCancel,
@@ -78,3 +78,27 @@ onMounted(() => {
   syncDialogInUrl();
 });
 </script>
+
+<style scoped>
+:deep(.dialog-shell) {
+  width: min(92vw, 720px);
+  max-width: min(92vw, 720px);
+  margin: 0 auto;
+}
+
+@media (max-width: 599px) {
+  :deep(.dialog-shell) {
+    width: calc(100vw - 12px) !important;
+    max-width: calc(100vw - 12px) !important;
+    min-width: 0 !important;
+    margin: 0 6px 6px !important;
+    border-radius: 14px !important;
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+  }
+
+  :deep(.dialog-shell.q-card) {
+    min-width: 0 !important;
+  }
+}
+</style>

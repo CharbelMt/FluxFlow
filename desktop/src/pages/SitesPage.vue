@@ -38,25 +38,68 @@
                   $t('sites.assets_deployed', { count: getSiteAssetCount(site.id) })
                 }}</span>
               </div>
+
+              <div class="q-mt-xs row items-start text-slate-600">
+                <q-icon :name="mdiAccountGroup" size="16px" class="q-mr-xs q-mt-[2px]" />
+                <div class="flex flex-wrap gap-1">
+                  <q-chip
+                    v-for="supervisorName in getSiteSupervisorNames(site.id)"
+                    :key="`${site.id}-${supervisorName}`"
+                    size="sm"
+                    color="teal-1"
+                    text-color="teal-9"
+                    class="font-semibold"
+                  >
+                    {{ supervisorName }}
+                  </q-chip>
+                  <span
+                    v-if="getSiteSupervisorNames(site.id).length === 0"
+                    class="text-sm text-slate-400"
+                  >
+                    {{ $t('sites.no_supervisors_assigned') }}
+                  </span>
+                </div>
+              </div>
             </q-card-section>
 
             <q-card-section>
-              <div class="q-mb-sm font-mono text-[11px] uppercase tracking-[0.17em] text-slate-400">
-                {{ $t('sites.storage_rooms') }}
+              <div class="q-mb-sm flex items-center justify-between gap-3">
+                <div class="font-mono text-[11px] uppercase tracking-[0.17em] text-slate-400">
+                  {{ $t('sites.storage_rooms') }}
+                </div>
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  color="primary"
+                  :label="$t('sites.add_room')"
+                  :icon="mdiPlus"
+                  class="rounded-lg"
+                  @click="openAddRoomDialog(site)"
+                />
               </div>
-              <q-list dense>
-                <q-item v-for="room in site.storageRooms" :key="room.id" class="q-px-none">
-                  <q-item-section avatar>
-                    <q-icon :name="mdiDoorOpen" color="slate-400" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="font-semibold">{{ room.room_label }}</q-item-label>
-                    <q-item-label caption class="font-mono text-[10px] text-slate-500">
-                      {{ $t('sites.uid_label') }} {{ room.room_tag_uid }}
-                    </q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
+
+              <div v-if="site.storageRooms.length > 0">
+                <q-list dense>
+                  <q-item v-for="room in site.storageRooms" :key="room.id" class="q-px-none">
+                    <q-item-section avatar>
+                      <q-icon :name="mdiDoorOpen" color="slate-400" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="font-semibold">{{ room.roomLabel }}</q-item-label>
+                      <q-item-label caption class="font-mono text-[10px] text-slate-500">
+                        {{ $t('sites.uid_label') }} {{ room.roomTagUid }}
+                      </q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </div>
+              <div
+                v-else
+                class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-400"
+              >
+                {{ $t('sites.no_rooms') }}
+              </div>
             </q-card-section>
 
             <q-card-actions align="right" class="q-pb-md q-px-md">
@@ -88,16 +131,29 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useSiteStore } from 'src/stores/site-store';
 import { useAssetStore } from 'src/stores/asset-store';
+import { useAuthStore } from 'src/stores/auth-store';
+import { useSupervisorStore } from 'src/stores/supervisor-store';
 import { useDialog } from 'src/composables/useDialog';
 import NewSiteForm from 'src/components/NewSiteForm.vue';
-import { mdiPlus, mdiDoorOpen, mdiMapMarker, mdiPackageVariantClosed } from '@quasar/extras/mdi-v7';
+import StorageRoomForm from 'src/components/StorageRoomForm.vue';
+import {
+  mdiPlus,
+  mdiDoorOpen,
+  mdiMapMarker,
+  mdiPackageVariantClosed,
+  mdiAccountGroup,
+} from '@quasar/extras/mdi-v7';
 import { useRouter } from 'vue-router';
 
+const $q = useQuasar();
+const authStore = useAuthStore();
 const siteStore = useSiteStore();
 const assetStore = useAssetStore();
+const supervisorStore = useSupervisorStore();
 const { pushDialog } = useDialog();
 const router = useRouter();
 const { t: $t } = useI18n();
@@ -118,8 +174,26 @@ const assetsBySite = computed(() => {
   return counts;
 });
 
+const supervisorsBySite = computed(() => {
+  const map = new Map<string, string[]>();
+
+  supervisorStore.sites.forEach((site) => {
+    const names = site.supervisors
+      .map((entry) => entry.supervisor?.fullName)
+      .filter((name): name is string => !!name);
+
+    map.set(site.id, names);
+  });
+
+  return map;
+});
+
 function getSiteAssetCount(siteId: string) {
   return assetsBySite.value.get(siteId) || 0;
+}
+
+function getSiteSupervisorNames(siteId: string) {
+  return supervisorsBySite.value.get(siteId) || [];
 }
 
 function getSiteLocation(site: { location_gps?: string; locationGps?: string | null }) {
@@ -154,6 +228,19 @@ function openEditSiteDialog(site: {
   );
 }
 
+function openAddRoomDialog(site: { id: string; name: string }) {
+  pushDialog(
+    StorageRoomForm,
+    {
+      siteId: site.id,
+      siteName: site.name,
+    },
+    {
+      persistent: true,
+    },
+  );
+}
+
 async function manageSiteAssets(siteId: string) {
   await router.push({
     name: 'assets',
@@ -164,6 +251,17 @@ async function manageSiteAssets(siteId: string) {
 }
 
 onMounted(async () => {
-  await Promise.all([siteStore.fetchSites(), assetStore.fetchAssets()]);
+  const managerId = authStore.user?.id as string | undefined;
+
+  try {
+    await Promise.all([
+      siteStore.fetchSites(),
+      assetStore.fetchAssets(),
+      managerId ? supervisorStore.fetchManagerSupervisorData(managerId) : Promise.resolve(),
+    ]);
+  } catch (error) {
+    console.error(error);
+    $q.notify({ color: 'negative', message: $t('errors.failed_load_supervisors') });
+  }
 });
 </script>
