@@ -16,6 +16,7 @@ export interface Site {
   id: string;
   name: string;
   location_gps: string;
+  locationGps?: string | null;
   manager_id: string;
   created_at: string;
 }
@@ -25,6 +26,8 @@ export interface StorageRoom {
   site_id: string;
   room_label: string;
   room_tag_uid: string;
+  roomLabel?: string;
+  roomTagUid?: string;
 }
 
 export interface AssetType {
@@ -33,6 +36,8 @@ export interface AssetType {
   manufacturer: string;
   category: string;
   maintenance_interval_hrs: number;
+  modelName?: string;
+  maintenanceIntervalHrs?: number;
 }
 
 export interface AssetInstance {
@@ -44,6 +49,11 @@ export interface AssetInstance {
   status: string;
   version_clock: number;
   total_hours_used: number;
+  serialNumber?: string;
+  assignedSiteId?: string;
+  currentRoomId?: string;
+  versionClock?: number;
+  totalHoursUsed?: number;
   type?: AssetType;
 }
 
