@@ -51,5 +51,10 @@ export const useAuthStore = defineStore('auth', {
       sessionStorage.removeItem('user');
       delete api.defaults.headers.common['Authorization'];
     },
+
+    async changeOwnPassword(payload: { current_password: string; new_password: string }) {
+      const response = await api.post('/me/change-password', payload);
+      return response.data as { success: boolean; error?: string };
+    },
   },
 });

@@ -45,5 +45,10 @@ export const useAssetStore = defineStore('assets', {
         this.loading = false;
       }
     },
+
+    async fetchAssetQrCode(assetId: string) {
+      const response = await api.get(`/assets/${assetId}/qr`);
+      return response.data as { success: true; qrSvg: string; qrPayload: string };
+    },
   },
 });

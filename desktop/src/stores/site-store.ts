@@ -62,5 +62,21 @@ export const useSiteStore = defineStore('sites', {
         throw error;
       }
     },
+
+    async createStorageRoom(siteId: string, payload: { room_label: string; room_tag_uid: string }) {
+      try {
+        const response = await api.post('/storage-rooms', {
+          site_id: siteId,
+          ...payload,
+        });
+        if (response.data.success) {
+          await this.fetchSites();
+          return response.data.room;
+        }
+      } catch (error) {
+        console.error('Failed to create storage room:', error);
+        throw error;
+      }
+    },
   },
 });
