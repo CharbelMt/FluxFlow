@@ -30,8 +30,8 @@
               <div class="q-mb-md">
                 <div class="text-overline text-grey">Status</div>
                 <q-chip
-                  :label="scanned_item.data.status"
-                  :color="getStatusColor(scanned_item.data.status)"
+                  :label="scanned_item.data.status || ''"
+                  :color="getStatusColor(scanned_item.data.status || '')"
                   text-color="white"
                   size="sm"
                 />
@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import type { ScannedItem } from 'src/composables/useScanner';
+import type { ScannedAssetData, ScannedItem, ScannedRoomData } from 'src/utils/types';
 
 interface Props {
   scanned_item: ScannedItem | null;
@@ -210,13 +210,16 @@ const emit = defineEmits<{
 }>();
 
 // Helper functions to handle both snake_case and camelCase fields
-const getSerialNumber = (asset: any) => asset.serialNumber || asset.serial_number;
-const getTotalHoursUsed = (asset: any) => asset.totalHoursUsed || asset.total_hours_used || 0;
-const getModelName = (asset_type: any) => asset_type.modelName || asset_type.model_name;
-const getMaintenanceInterval = (asset_type: any) =>
-  asset_type.maintenanceIntervalHrs || asset_type.maintenance_interval_hrs;
-const getRoomLabel = (room: any) => room.roomLabel || room.room_label;
-const getRoomTagUid = (room: any) => room.roomTagUid || room.room_tag_uid;
+const getSerialNumber = (asset: ScannedAssetData) =>
+  asset.serialNumber || asset.serial_number || '';
+const getTotalHoursUsed = (asset: ScannedAssetData) =>
+  asset.totalHoursUsed || asset.total_hours_used || 0;
+const getModelName = (assetType?: ScannedAssetData['type']) =>
+  assetType?.modelName || assetType?.model_name || '';
+const getMaintenanceInterval = (assetType?: ScannedAssetData['type']) =>
+  assetType?.maintenanceIntervalHrs || assetType?.maintenance_interval_hrs || 0;
+const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
+const getRoomTagUid = (room: ScannedRoomData) => room.roomTagUid || room.room_tag_uid || '';
 
 const getStatusColor = (status: string) => {
   const status_colors: Record<string, string> = {
