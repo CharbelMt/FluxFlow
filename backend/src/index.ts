@@ -5,6 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { jwt } from "@elysiajs/jwt";
 import * as schema from "./db/schema";
 import cors from "@elysiajs/cors";
+import QRCode from "qrcode";
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -249,6 +250,67 @@ const app = new Elysia()
 						manager_id: t.String(),
 					}),
 				},
+			)
+
+			.delete(
+				"/:site_id",
+				async ({ params, set }) => {
+					const existing_site = await db.query.sites.findFirst({
+						where: eq(schema.sites.id, params.site_id),
+					});
+
+					if (!existing_site) {
+						set.status = 404;
+						return { error: "Site not found." };
+					}
+
+					await db.transaction(async (tx) => {
+						const site_rooms = await tx.query.storageRooms.findMany({
+							where: eq(schema.storageRooms.siteId, params.site_id),
+							columns: { id: true },
+						});
+
+						const room_ids = site_rooms
+							.map((room) => room.id)
+							.filter(Boolean) as string[];
+
+						if (room_ids.length > 0) {
+							await tx
+								.update(schema.assetInstances)
+								.set({ currentRoomId: null })
+								.where(inArray(schema.assetInstances.currentRoomId, room_ids));
+
+							await tx
+								.update(schema.auditLogs)
+								.set({ roomId: null })
+								.where(inArray(schema.auditLogs.roomId, room_ids));
+						}
+
+						await tx
+							.update(schema.assetInstances)
+							.set({ assignedSiteId: null })
+							.where(eq(schema.assetInstances.assignedSiteId, params.site_id));
+
+						await tx
+							.delete(schema.siteSupervisors)
+							.where(eq(schema.siteSupervisors.siteId, params.site_id));
+
+						await tx
+							.delete(schema.storageRooms)
+							.where(eq(schema.storageRooms.siteId, params.site_id));
+
+						await tx
+							.delete(schema.sites)
+							.where(eq(schema.sites.id, params.site_id));
+					});
+
+					return { success: true };
+				},
+				{
+					params: t.Object({
+						site_id: t.String(),
+					}),
+				},
 			),
 	)
 
@@ -313,6 +375,93 @@ const app = new Elysia()
 				},
 			)
 
+			.get(
+				"/:room_id/qr",
+				async ({ params, set }) => {
+					const fetched_room = await db.query.storageRooms.findFirst({
+						where: eq(schema.storageRooms.id, params.room_id),
+						columns: {
+							id: true,
+							roomLabel: true,
+							roomTagUid: true,
+						},
+					});
+
+					if (!fetched_room) {
+						set.status = 404;
+						return { error: "Storage room not found." };
+					}
+
+					try {
+						const qr_payload = fetched_room.id;
+						const qr_svg = await QRCode.toString(qr_payload, {
+							type: "svg",
+							margin: 1,
+							width: 320,
+						});
+
+						return {
+							success: true,
+							qrSvg: qr_svg,
+							qrPayload: qr_payload,
+							room: fetched_room,
+						};
+					} catch (error) {
+						set.status = 500;
+						return {
+							error: "Failed to generate storage room QR.",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						room_id: t.String(),
+					}),
+				},
+			)
+
+			.put(
+				"/:room_id",
+				async ({ params, body, set }) => {
+					const existing_room = await db.query.storageRooms.findFirst({
+						where: eq(schema.storageRooms.id, params.room_id),
+					});
+
+					if (!existing_room) {
+						set.status = 404;
+						return { error: "Storage room not found." };
+					}
+
+					try {
+						const [updated_room] = await db
+							.update(schema.storageRooms)
+							.set({
+								roomLabel: body.room_label,
+								roomTagUid: body.room_tag_uid,
+							})
+							.where(eq(schema.storageRooms.id, params.room_id))
+							.returning();
+
+						return { success: true, room: updated_room };
+					} catch (error) {
+						set.status = 400;
+						return {
+							error: "Could not update storage room. UID might already exist.",
+						};
+					}
+				},
+				{
+					params: t.Object({
+						room_id: t.String(),
+					}),
+					body: t.Object({
+						room_label: t.String(),
+						room_tag_uid: t.String(),
+					}),
+				},
+			)
+
 			.post(
 				"/",
 				async ({ body }) => {
@@ -339,6 +488,127 @@ const app = new Elysia()
 
 	.group("/assets", (app) =>
 		app
+			.get("/types", async () => {
+				return await db.query.assetTypes.findMany();
+			})
+
+			.post(
+				"/types",
+				async ({ body, set }) => {
+					try {
+						const [new_type] = await db
+							.insert(schema.assetTypes)
+							.values({
+								modelName: body.model_name,
+								manufacturer: body.manufacturer,
+								category: body.category,
+								maintenanceIntervalHrs: body.maintenance_interval_hrs,
+							})
+							.returning();
+
+						return { success: true, type: new_type };
+					} catch (error) {
+						set.status = 400;
+						return {
+							error: "Failed to create asset type",
+							details: String(error),
+						};
+					}
+				},
+				{
+					body: t.Object({
+						model_name: t.String(),
+						manufacturer: t.String(),
+						category: t.String(),
+						maintenance_interval_hrs: t.Number(),
+					}),
+				},
+			)
+
+			.put(
+				"/types/:type_id",
+				async ({ params, body, set }) => {
+					const existing_type = await db.query.assetTypes.findFirst({
+						where: eq(schema.assetTypes.id, params.type_id),
+					});
+
+					if (!existing_type) {
+						set.status = 404;
+						return { error: "Asset type not found." };
+					}
+
+					try {
+						const [updated_type] = await db
+							.update(schema.assetTypes)
+							.set({
+								modelName: body.model_name,
+								manufacturer: body.manufacturer,
+								category: body.category,
+								maintenanceIntervalHrs: body.maintenance_interval_hrs,
+							})
+							.where(eq(schema.assetTypes.id, params.type_id))
+							.returning();
+
+						return { success: true, type: updated_type };
+					} catch (error) {
+						set.status = 400;
+						return {
+							error: "Failed to update asset type",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						type_id: t.String(),
+					}),
+					body: t.Object({
+						model_name: t.String(),
+						manufacturer: t.String(),
+						category: t.String(),
+						maintenance_interval_hrs: t.Number(),
+					}),
+				},
+			)
+
+			.delete(
+				"/types/:type_id",
+				async ({ params, set }) => {
+					const existing_type = await db.query.assetTypes.findFirst({
+						where: eq(schema.assetTypes.id, params.type_id),
+					});
+
+					if (!existing_type) {
+						set.status = 404;
+						return { error: "Asset type not found." };
+					}
+
+					// Check if this type is being used by any assets
+					const assets_using_type = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.typeId, params.type_id),
+						columns: { id: true },
+					});
+
+					if (assets_using_type) {
+						set.status = 400;
+						return {
+							error: "Cannot delete asset type that is in use by assets.",
+						};
+					}
+
+					await db
+						.delete(schema.assetTypes)
+						.where(eq(schema.assetTypes.id, params.type_id));
+
+					return { success: true };
+				},
+				{
+					params: t.Object({
+						type_id: t.String(),
+					}),
+				},
+			)
+
 			.get("/", async () => {
 				return await db.query.assetInstances.findMany({
 					with: {
@@ -367,6 +637,94 @@ const app = new Elysia()
 					}
 
 					return { success: true, asset: fetched_asset };
+				},
+				{
+					params: t.Object({
+						asset_id: t.String(),
+					}),
+				},
+			)
+
+			.get(
+				"/:asset_id/qr",
+				async ({ params, set }) => {
+					const fetched_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.asset_id),
+						columns: {
+							id: true,
+							serialNumber: true,
+						},
+						with: {
+							type: {
+								columns: {
+									modelName: true,
+								},
+							},
+						},
+					});
+
+					if (!fetched_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					try {
+						const qr_payload = fetched_asset.id;
+						const qr_svg = await QRCode.toString(qr_payload, {
+							type: "svg",
+							margin: 1,
+							width: 320,
+						});
+
+						return {
+							success: true,
+							qrSvg: qr_svg,
+							qrPayload: qr_payload,
+							asset: fetched_asset,
+						};
+					} catch (error) {
+						set.status = 500;
+						return {
+							error: "Failed to generate asset QR.",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						asset_id: t.String(),
+					}),
+				},
+			)
+
+			.delete(
+				"/:asset_id",
+				async ({ params, set }) => {
+					const existing_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.asset_id),
+						columns: { id: true },
+					});
+
+					if (!existing_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					await db.transaction(async (tx) => {
+						await tx
+							.delete(schema.auditLogs)
+							.where(eq(schema.auditLogs.assetId, params.asset_id));
+
+						await tx
+							.delete(schema.maintenanceRecords)
+							.where(eq(schema.maintenanceRecords.assetId, params.asset_id));
+
+						await tx
+							.delete(schema.assetInstances)
+							.where(eq(schema.assetInstances.id, params.asset_id));
+					});
+
+					return { success: true };
 				},
 				{
 					params: t.Object({
@@ -589,6 +947,48 @@ const app = new Elysia()
 				full_name: t.String(),
 				email: t.String(),
 				password: t.Optional(t.String()),
+			}),
+		},
+	)
+
+	.delete(
+		"/manager/:manager_id/supervisors/:supervisor_id",
+		async ({ params, set }) => {
+			const manager_record = await db.query.users.findFirst({
+				where: eq(schema.users.id, params.manager_id),
+			});
+
+			if (!manager_record || manager_record.role !== "manager") {
+				set.status = 403;
+				return { error: "Forbidden: manager access required." };
+			}
+
+			const existing_user = await db.query.users.findFirst({
+				where: eq(schema.users.id, params.supervisor_id),
+			});
+
+			if (!existing_user || existing_user.role !== "supervisor") {
+				set.status = 404;
+				return { error: "Supervisor not found." };
+			}
+
+			await db.transaction(async (tx) => {
+				await tx
+					.update(schema.auditLogs)
+					.set({ supervisorId: null })
+					.where(eq(schema.auditLogs.supervisorId, params.supervisor_id));
+
+				await tx
+					.delete(schema.users)
+					.where(eq(schema.users.id, params.supervisor_id));
+			});
+
+			return { success: true };
+		},
+		{
+			params: t.Object({
+				manager_id: t.String(),
+				supervisor_id: t.String(),
 			}),
 		},
 	)
