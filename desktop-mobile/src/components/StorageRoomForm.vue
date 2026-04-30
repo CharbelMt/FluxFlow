@@ -1,7 +1,9 @@
 <template>
   <q-card flat class="bg-white overflow-hidden" style="min-width: 460px">
     <CardSectionTitle
-      :title="$t('forms.storage_room.title_create')"
+      :title="
+        is_edit_mode ? $t('forms.storage_room.title_edit') : $t('forms.storage_room.title_create')
+      "
       @close="props.onDialogCancel"
     />
 
@@ -50,7 +52,9 @@
         unelevated
         rounded
         color="primary"
-        :label="$t('forms.storage_room.create_room')"
+        :label="
+          is_edit_mode ? $t('forms.storage_room.save_room') : $t('forms.storage_room.create_room')
+        "
         class="q-px-xl"
         :loading="submitting"
         @click="handleSubmit"
@@ -72,6 +76,13 @@ const props = defineProps<{
   componentProps?: {
     siteId?: string;
     siteName?: string;
+    room?: {
+      id: string;
+      roomLabel?: string;
+      room_label?: string;
+      roomTagUid?: string;
+      room_tag_uid?: string;
+    };
   };
 }>();
 
@@ -82,9 +93,12 @@ const { t: $t } = useI18n();
 const submitting = ref(false);
 const siteId = computed(() => props.componentProps?.siteId || '');
 const siteName = computed(() => props.componentProps?.siteName || '');
+const editingRoomId = computed(() => props.componentProps?.room?.id || '');
+const is_edit_mode = computed(() => Boolean(editingRoomId.value));
 const form = ref({
-  room_label: '',
-  room_tag_uid: '',
+  room_label: props.componentProps?.room?.roomLabel || props.componentProps?.room?.room_label || '',
+  room_tag_uid:
+    props.componentProps?.room?.roomTagUid || props.componentProps?.room?.room_tag_uid || '',
 });
 
 function generateRoomTagUid() {
@@ -108,16 +122,29 @@ async function handleSubmit() {
 
   submitting.value = true;
   try {
-    const room = await siteStore.createStorageRoom(siteId.value, {
-      room_label: roomLabel,
-      room_tag_uid: roomTagUid,
-    });
+    const room = is_edit_mode.value
+      ? await siteStore.updateStorageRoom(editingRoomId.value, {
+          room_label: roomLabel,
+          room_tag_uid: roomTagUid,
+        })
+      : await siteStore.createStorageRoom(siteId.value, {
+          room_label: roomLabel,
+          room_tag_uid: roomTagUid,
+        });
 
-    $q.notify({ color: 'positive', message: $t('messages.room_created') });
+    $q.notify({
+      color: 'positive',
+      message: is_edit_mode.value ? $t('messages.room_updated') : $t('messages.room_created'),
+    });
     props.onDialogOK(room);
   } catch (error) {
     console.error(error);
-    $q.notify({ color: 'negative', message: $t('errors.room_create_failed') });
+    $q.notify({
+      color: 'negative',
+      message: is_edit_mode.value
+        ? $t('errors.room_update_failed')
+        : $t('errors.room_create_failed'),
+    });
   } finally {
     submitting.value = false;
   }
