@@ -5,9 +5,9 @@ import type { Component } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 type DialogEntry = {
-  showDialog: (cmp: Component, props?: Record<string, any>) => DialogChainObject;
+  showDialog: (cmp: Component, props?: Record<string, unknown>) => DialogChainObject;
   cmp: Component;
-  props?: Record<string, any> | undefined;
+  props?: Record<string, unknown> | undefined;
   dialogOptions?: QDialogProps | undefined;
 };
 
@@ -16,7 +16,7 @@ const dialog_array: DialogEntry[] = [];
 export function useDialog() {
   const { t } = useI18n();
 
-  function deletePrompt(msg?: string, options?: Record<string, any>) {
+  function deletePrompt(msg?: string, options?: Record<string, unknown>) {
     return Dialog.create({
       cancel: {
         label: t('common.cancel'),
@@ -82,7 +82,7 @@ export function useDialog() {
 
   function showDialog(
     componentToRender: Component,
-    componentProps?: Record<string, any>,
+    componentProps?: Record<string, unknown>,
     dialogOptions?: QDialogProps,
   ) {
     return Dialog.create({
@@ -97,7 +97,11 @@ export function useDialog() {
     });
   }
 
-  function pushDialog(cmp: Component, props?: Record<string, any>, dialogOptions?: QDialogProps) {
+  function pushDialog(
+    cmp: Component,
+    props?: Record<string, unknown>,
+    dialogOptions?: QDialogProps,
+  ) {
     dialog_array.push({ showDialog, cmp, props, dialogOptions });
     return showDialog(cmp, props, dialogOptions);
   }
