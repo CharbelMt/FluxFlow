@@ -15,46 +15,52 @@ export interface User {
 export interface Site {
   id: string;
   name: string;
-  location_gps: string;
+  location_gps?: string | null;
   locationGps?: string | null;
-  manager_id: string;
-  created_at: string;
+  manager_id?: string | null;
+  managerId?: string | null;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export interface StorageRoom {
   id: string;
-  site_id: string;
-  room_label: string;
-  room_tag_uid: string;
+  site_id?: string | null;
+  siteId?: string | null;
+  room_label?: string;
+  room_tag_uid?: string;
   roomLabel?: string;
   roomTagUid?: string;
+  site?: Site;
 }
 
 export interface AssetType {
   id: string;
-  model_name: string;
-  manufacturer: string;
-  category: string;
-  maintenance_interval_hrs: number;
+  model_name?: string;
   modelName?: string;
+  manufacturer?: string | null;
+  category?: string | null;
+  maintenance_interval_hrs?: number | null;
   maintenanceIntervalHrs?: number;
 }
 
 export interface AssetInstance {
   id: string;
-  type_id: string;
-  serial_number: string;
-  assigned_site_id: string;
-  current_room_id: string;
-  status: string;
-  version_clock: number;
-  total_hours_used: number;
+  type_id?: string | null;
+  serial_number?: string;
+  assigned_site_id?: string | null;
+  current_room_id?: string | null;
+  status?: string | null;
+  version_clock?: number | null;
+  total_hours_used?: number | null;
   serialNumber?: string;
   assignedSiteId?: string;
   currentRoomId?: string;
   versionClock?: number;
   totalHoursUsed?: number;
   type?: AssetType;
+  site?: Site;
+  room?: StorageRoom;
 }
 
 export interface AuditLog {
@@ -68,3 +74,25 @@ export interface AuditLog {
   condition_score: number;
   hours_used_increment: number;
 }
+
+export interface ScannedAssetData extends AssetInstance {
+  type?: AssetType;
+  site?: Site;
+  room?: StorageRoom;
+}
+
+export interface ScannedRoomData extends StorageRoom {
+  site?: Site;
+}
+
+export interface ScannedAsset {
+  type: 'asset';
+  data: ScannedAssetData;
+}
+
+export interface ScannedRoom {
+  type: 'room';
+  data: ScannedRoomData;
+}
+
+export type ScannedItem = ScannedAsset | ScannedRoom;

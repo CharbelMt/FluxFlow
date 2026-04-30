@@ -105,7 +105,7 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useScanner } from 'src/composables/useScanner';
 import ScannerDetailView from 'src/components/ScannerDetailView.vue';
-import type { ScannedItem } from 'src/composables/useScanner';
+import type { ScannedAssetData, ScannedItem, ScannedRoomData } from 'src/utils/types';
 
 interface RecentScan {
   uuid: string;
@@ -185,8 +185,8 @@ const handleClose = () => {
   }
 };
 
-const handleViewHistory = (asset_id: string) => {
-  router.push({
+const handleViewHistory = async (asset_id: string) => {
+  await router.push({
     name: 'assets',
     params: { asset_id },
   });
@@ -205,9 +205,11 @@ const formatTime = (timestamp: number) => {
 };
 
 // Helper functions
-const getSerialNumber = (asset: any) => asset.serialNumber || asset.serial_number;
-const getModelName = (asset_type: any) => asset_type.modelName || asset_type.model_name;
-const getRoomLabel = (room: any) => room.roomLabel || room.room_label;
+const getSerialNumber = (asset: ScannedAssetData) =>
+  asset.serialNumber || asset.serial_number || '';
+const getModelName = (assetType?: ScannedAssetData['type']) =>
+  assetType?.modelName || assetType?.model_name || '';
+const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
 </script>
 
 <style scoped lang="scss">

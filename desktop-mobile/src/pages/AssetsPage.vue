@@ -78,11 +78,21 @@
             <q-btn
               color="primary"
               icon="add"
-              :label="$t('assets.bulk_intake')"
+              :label="$t('assets.add_asset')"
               unelevated
               rounded
               class="rounded-xl q-px-md font-semibold"
               @click="openIntake"
+            />
+
+            <q-btn
+              flat
+              color="slate-600"
+              icon="category"
+              :label="$t('assets.manage_models')"
+              rounded
+              class="rounded-xl q-px-md font-semibold"
+              @click="openModelsDialog"
             />
           </div>
         </div>
@@ -152,9 +162,9 @@
                     <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
                     <q-item-section>{{ $t('assets.generate_qr') }}</q-item-section>
                   </q-item>
-                  <q-item clickable class="text-negative">
-                    <q-item-section avatar><q-icon name="report_problem" /></q-item-section>
-                    <q-item-section>{{ $t('assets.flag_issue') }}</q-item-section>
+                  <q-item clickable class="text-negative" @click="confirmDeleteAsset(props.row)">
+                    <q-item-section avatar><q-icon name="delete" /></q-item-section>
+                    <q-item-section>{{ $t('assets.delete_item') }}</q-item-section>
                   </q-item>
                 </q-list>
               </q-menu>
@@ -172,7 +182,8 @@ import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
 import { useDialog } from 'src/composables/useDialog';
-import BulkIntakeForm from 'components/BulkIntakeForm.vue';
+import AssetsFormDialog from 'components/AssetsFormDialog.vue';
+import QrPreviewDialog from 'components/QrPreviewDialog.vue';
 import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
@@ -260,12 +271,16 @@ const columns: QTableColumn[] = [
 
 function openIntake() {
   pushDialog(
-    BulkIntakeForm,
+    AssetsFormDialog,
     {},
     {
       persistent: true,
     },
   );
+}
+
+function openModelsDialog() {
+  void router.push({ name: 'asset-models' });
 }
 
 function toggleStatusFilter(status: string) {
@@ -313,73 +328,59 @@ function viewHistory(assetId: string) {
   console.log(`Navigating to history for ${assetId}`);
 }
 
-function buildQrPreviewHtml(params: {
-  title: string;
-  subtitle: string;
-  qrMarkup: string;
-  assetId: string;
-  serialNumber: string;
-}) {
-  return `<!doctype html><html><head><title>${params.title}</title><style>
-    :root { color-scheme: light; }
-    body { margin: 0; font-family: Arial, sans-serif; background: #f8fafc; color: #0f172a; }
-    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 32px; box-sizing: border-box; }
-    .card { width: min(420px, 100%); background: white; border: 1px solid #e2e8f0; border-radius: 24px; box-shadow: 0 20px 50px rgba(8, 15, 34, 0.12); padding: 28px; text-align: center; }
-    .title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-    .sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
-    .svg { display: grid; place-items: center; background: #f8fafc; border-radius: 20px; padding: 16px; }
-    .meta { margin-top: 18px; font-size: 12px; color: #475569; line-height: 1.6; }
-    @media print { body { background: white; } .card { box-shadow: none; border: none; } }
-  </style></head><body><div class="wrap"><div class="card"><div class="title">${params.title}</div><div class="sub">${params.subtitle}</div><div class="svg">${params.qrMarkup}</div><div class="meta">${$t('assets.qr_meta', { assetId: params.assetId, serialNumber: params.serialNumber })}</div></div></div></body></html>`;
-}
-
 async function generateAssetQr(asset: {
   id: string;
   serialNumber: string;
   type?: { modelName?: string };
 }) {
-  const qrWindow = window.open('', '_blank', 'noopener,noreferrer,width=520,height=760');
-
-  if (!qrWindow) {
-    $q.notify({ color: 'negative', message: $t('errors.popup_blocked') });
-    return;
-  }
-
-  qrWindow.document.open();
-  qrWindow.document.write(
-    buildQrPreviewHtml({
-      title: $t('assets.qr_code'),
-      subtitle: asset.type?.modelName || asset.serialNumber,
-      qrMarkup: $t('assets.qr_loading'),
-      assetId: asset.id,
-      serialNumber: asset.serialNumber,
-    }),
-  );
-  qrWindow.document.close();
+  const subtitle = asset.type?.modelName || asset.serialNumber;
+  const metadata = $t('assets.qr_meta', { assetId: asset.id, serialNumber: asset.serialNumber });
 
   try {
     const response = await assetStore.fetchAssetQrCode(asset.id);
-    const html = buildQrPreviewHtml({
+    pushDialog(QrPreviewDialog, {
       title: $t('assets.qr_code'),
-      subtitle: asset.type?.modelName || asset.serialNumber,
+      subtitle,
       qrMarkup: response.qrSvg,
-      assetId: asset.id,
-      serialNumber: asset.serialNumber,
+      metadata,
+      context: 'asset',
     });
-
-    qrWindow.document.open();
-    qrWindow.document.write(html);
-    qrWindow.document.close();
-    qrWindow.focus();
-    qrWindow.print();
   } catch (error) {
-    qrWindow.close();
     console.error(error);
     $q.notify({ color: 'negative', message: $t('errors.qr_generation_failed') });
   }
 }
 
+function confirmDeleteAsset(asset: { id: string; serialNumber?: string; serial_number?: string }) {
+  const serial = asset.serialNumber || asset.serial_number || asset.id;
+  $q.dialog({
+    title: $t('dialogs.delete_asset_title'),
+    message: $t('dialogs.delete_asset_message', { serial }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: $t('dialogs.delete'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await assetStore.deleteAsset(asset.id);
+        $q.notify({ color: 'positive', message: $t('messages.asset_deleted') });
+      } catch (error) {
+        console.error(error);
+        $q.notify({ color: 'negative', message: $t('errors.delete_asset_failed') });
+      }
+    })();
+  });
+}
+
 onMounted(async () => {
-  await Promise.all([assetStore.fetchAssets(), siteStore.fetchSites()]);
+  await Promise.all([
+    assetStore.fetchAssets(),
+    assetStore.fetchAssetTypes(),
+    siteStore.fetchSites(),
+  ]);
 });
 </script>

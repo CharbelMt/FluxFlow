@@ -131,6 +131,16 @@ export const useSupervisorStore = defineStore('supervisors', {
       }
     },
 
+    async deleteSupervisor(managerId: string, supervisorId: string) {
+      this.savingSupervisorId = supervisorId;
+      try {
+        await api.delete(`/manager/${managerId}/supervisors/${supervisorId}`);
+        await this.fetchManagerSupervisorData(managerId);
+      } finally {
+        this.savingSupervisorId = '';
+      }
+    },
+
     async fetchManagerSupervisorData(managerId: string) {
       this.loading = true;
       try {

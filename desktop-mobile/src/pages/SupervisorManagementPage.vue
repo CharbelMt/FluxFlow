@@ -89,6 +89,15 @@
               @click="openEditDialog(props.row)"
               rounded
             />
+            <q-btn
+              flat
+              color="negative"
+              :label="$t('supervisors.delete')"
+              no-caps
+              class="rounded-lg"
+              @click="confirmDeleteSupervisor(props.row)"
+              rounded
+            />
           </q-td>
         </template>
       </q-table>
@@ -199,6 +208,36 @@ function openEditDialog(supervisor: { id: string; fullName: string; email: strin
 
 function getAssignedSiteNames(supervisorId: string) {
   return assignedSitesBySupervisor.value.get(supervisorId) || [];
+}
+
+function confirmDeleteSupervisor(supervisor: { id: string; fullName: string }) {
+  const managerId = authStore.user?.id as string | undefined;
+  if (!managerId) {
+    $q.notify({ color: 'negative', message: $t('supervisors.unable_resolve_manager') });
+    return;
+  }
+
+  $q.dialog({
+    title: $t('dialogs.delete_supervisor_title'),
+    message: $t('dialogs.delete_supervisor_message', { fullName: supervisor.fullName }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: $t('dialogs.delete'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await supervisorStore.deleteSupervisor(managerId, supervisor.id);
+        $q.notify({ color: 'positive', message: $t('messages.supervisor_deleted') });
+      } catch (error) {
+        console.error(error);
+        $q.notify({ color: 'negative', message: $t('errors.delete_supervisor_failed') });
+      }
+    })();
+  });
 }
 
 async function loadSupervisors() {

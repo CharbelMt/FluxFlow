@@ -91,6 +91,26 @@
                         {{ $t('sites.uid_label') }} {{ room.roomTagUid }}
                       </q-item-label>
                     </q-item-section>
+                    <q-item-section side>
+                      <div class="row items-center q-gutter-xs">
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          color="primary"
+                          :icon="mdiPencil"
+                          @click="openEditRoomDialog(site, room)"
+                        />
+                        <q-btn
+                          flat
+                          round
+                          dense
+                          color="teal"
+                          :icon="mdiQrcode"
+                          @click="generateRoomQr(site, room)"
+                        />
+                      </div>
+                    </q-item-section>
                   </q-item>
                 </q-list>
               </div>
@@ -121,6 +141,15 @@
                 @click="manageSiteAssets(site.id)"
                 rounded
               />
+              <q-btn
+                flat
+                color="negative"
+                :label="$t('common.delete')"
+                no-caps
+                class="rounded-lg"
+                @click="confirmDeleteSite(site)"
+                rounded
+              />
             </q-card-actions>
           </q-card>
         </div>
@@ -140,12 +169,15 @@ import { useSupervisorStore } from 'src/stores/supervisor-store';
 import { useDialog } from 'src/composables/useDialog';
 import NewSiteForm from 'src/components/NewSiteForm.vue';
 import StorageRoomForm from 'src/components/StorageRoomForm.vue';
+import QrPreviewDialog from 'src/components/QrPreviewDialog.vue';
 import {
   mdiPlus,
   mdiDoorOpen,
   mdiMapMarker,
   mdiPackageVariantClosed,
   mdiAccountGroup,
+  mdiPencil,
+  mdiQrcode,
 } from '@quasar/extras/mdi-v7';
 import { useRouter } from 'vue-router';
 
@@ -196,7 +228,7 @@ function getSiteSupervisorNames(siteId: string) {
   return supervisorsBySite.value.get(siteId) || [];
 }
 
-function getSiteLocation(site: { location_gps?: string; locationGps?: string | null }) {
+function getSiteLocation(site: { location_gps?: string | null; locationGps?: string | null }) {
   return site.location_gps || site.locationGps || $t('sites.location_not_set');
 }
 
@@ -213,7 +245,7 @@ function openNewSiteDialog() {
 function openEditSiteDialog(site: {
   id: string;
   name: string;
-  location_gps?: string;
+  location_gps?: string | null;
   locationGps?: string | null;
 }) {
   pushDialog(
@@ -241,6 +273,29 @@ function openAddRoomDialog(site: { id: string; name: string }) {
   );
 }
 
+function openEditRoomDialog(
+  site: { id: string; name: string },
+  room: {
+    id: string;
+    roomLabel?: string;
+    roomTagUid?: string;
+    room_label?: string;
+    room_tag_uid?: string;
+  },
+) {
+  pushDialog(
+    StorageRoomForm,
+    {
+      siteId: site.id,
+      siteName: site.name,
+      room,
+    },
+    {
+      persistent: true,
+    },
+  );
+}
+
 async function manageSiteAssets(siteId: string) {
   await router.push({
     name: 'assets',
@@ -248,6 +303,66 @@ async function manageSiteAssets(siteId: string) {
       siteId,
     },
   });
+}
+
+function confirmDeleteSite(site: { id: string; name: string }) {
+  $q.dialog({
+    title: $t('dialogs.delete_site_title'),
+    message: $t('dialogs.delete_site_message', { siteName: site.name }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: $t('dialogs.delete'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await siteStore.deleteSite(site.id);
+        await Promise.all([
+          assetStore.fetchAssets(),
+          authStore.user?.id
+            ? supervisorStore.fetchManagerSupervisorData(authStore.user.id as string)
+            : Promise.resolve(),
+        ]);
+        $q.notify({ color: 'positive', message: $t('messages.site_deleted') });
+      } catch (error) {
+        console.error(error);
+        $q.notify({ color: 'negative', message: $t('errors.delete_site_failed') });
+      }
+    })();
+  });
+}
+
+function generateRoomQr(
+  site: { name: string },
+  room: {
+    id: string;
+    roomLabel?: string;
+    roomTagUid?: string;
+    room_tag_uid?: string;
+  },
+) {
+  const subtitle = `${site.name} / ${room.roomLabel || room.id}`;
+  const roomTagUid = room.roomTagUid || room.room_tag_uid || '';
+  const metadata = $t('sites.room_qr_meta', { roomId: room.id, roomTagUid });
+
+  void (async () => {
+    try {
+      const response = await siteStore.fetchStorageRoomQrCode(room.id);
+      pushDialog(QrPreviewDialog, {
+        title: $t('sites.room_qr_code'),
+        subtitle,
+        qrMarkup: response.qrSvg,
+        metadata,
+        context: 'room',
+      });
+    } catch (error) {
+      console.error(error);
+      $q.notify({ color: 'negative', message: $t('errors.room_qr_generation_failed') });
+    }
+  })();
 }
 
 onMounted(async () => {

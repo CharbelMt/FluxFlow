@@ -78,5 +78,33 @@ export const useSiteStore = defineStore('sites', {
         throw error;
       }
     },
+
+    async updateStorageRoom(roomId: string, payload: { room_label: string; room_tag_uid: string }) {
+      try {
+        const response = await api.put(`/storage-rooms/${roomId}`, payload);
+        if (response.data.success) {
+          await this.fetchSites();
+          return response.data.room;
+        }
+      } catch (error) {
+        console.error('Failed to update storage room:', error);
+        throw error;
+      }
+    },
+
+    async fetchStorageRoomQrCode(roomId: string) {
+      const response = await api.get(`/storage-rooms/${roomId}/qr`);
+      return response.data as { success: true; qrSvg: string; qrPayload: string };
+    },
+
+    async deleteSite(siteId: string) {
+      try {
+        await api.delete(`/sites/${siteId}`);
+        await this.fetchSites();
+      } catch (error) {
+        console.error('Site deletion failed:', error);
+        throw error;
+      }
+    },
   },
 });
