@@ -31,6 +31,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/AssetsPage.vue'),
       },
       {
+        path: 'assets/models',
+        name: 'asset-models',
+        component: () => import('pages/AssetModelsPage.vue'),
+        meta: { showBackButton: true },
+      },
+      {
         path: 'supervisors',
         name: 'supervisors',
         component: () => import('pages/SupervisorManagementPage.vue'),

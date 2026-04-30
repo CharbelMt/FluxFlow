@@ -7,7 +7,17 @@
     <q-header class="bg-cyan-700 text-white border-b border-cyan-800 shadow-none">
       <q-toolbar class="q-py-md">
         <q-btn
-          v-if="!route.meta.hideMenu && !$q.screen.xs"
+          v-if="route.meta.showBackButton"
+          flat
+          dense
+          icon="arrow_back"
+          class="rounded-lg text-white/80 hover:bg-cyan-800 hover:text-white transition-colors"
+          @click="handleBack"
+          rounded
+        />
+
+        <q-btn
+          v-else-if="!route.meta.hideMenu && !$q.screen.xs"
           flat
           dense
           :icon="mdiMenu"
@@ -60,8 +70,8 @@
             clickable
             v-ripple
             :to="{ name: tab.name }"
-            active-class="nav-active"
-            class="nav-item rounded-xl text-slate-500 transition-all px-4 py-3"
+            :class="[isTabActive(tab.name) ? 'nav-active' : 'nav-item']"
+            class="rounded-xl text-slate-500 transition-all px-4 py-3"
           >
             <q-item-section avatar>
               <q-icon :name="tab.icon" size="24px" />
@@ -170,15 +180,24 @@ const tabs = computed(() => {
   return base_tabs;
 });
 
+const isTabActive = (tabName: string) => {
+  if (tabName === 'assets') {
+    return route.name === 'assets' || route.name === 'asset-models';
+  }
+  return route.name === tabName || String(route.name).startsWith(tabName);
+};
+
 const current_tab = computed(() => {
-  const active_tab = tabs.value.find(
-    (tab) => route.name === tab.name || String(route.name).startsWith(tab.name),
-  );
+  const active_tab = tabs.value.find((tab) => isTabActive(tab.name));
   return active_tab ? active_tab.label : '';
 });
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;
+}
+
+function handleBack() {
+  router.back();
 }
 
 async function handleLogout() {

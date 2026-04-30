@@ -1,14 +1,14 @@
 <template>
   <q-card flat class="bg-white overflow-hidden" style="min-width: 550px">
-    <CardSectionTitle :title="$t('forms.bulk_intake.title')" @close="onDialogCancel" />
+    <CardSectionTitle :title="$t('forms.add_asset.title')" @close="onDialogCancel" />
 
     <q-card-section class="q-pa-lg flex flex-col gap-4">
       <div class="column gap-2">
-        <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step1') }}</div>
+        <div class="text-overline text-primary font-bold">{{ $t('forms.add_asset.step1') }}</div>
         <div class="row gap-3">
           <q-select
             v-model="form.site_id"
-            :label="$t('forms.bulk_intake.target_site')"
+            :label="$t('forms.add_asset.target_site')"
             :options="siteStore.sites"
             option-value="id"
             option-label="name"
@@ -19,7 +19,7 @@
           />
           <q-select
             v-model="form.room_id"
-            :label="$t('forms.bulk_intake.target_room')"
+            :label="$t('forms.add_asset.target_room')"
             :options="availableRooms"
             option-value="id"
             option-label="roomLabel"
@@ -35,11 +35,11 @@
       <div class="column gap-2">
         <div class="row items-center justify-between">
           <div class="text-overline text-primary font-bold">
-            {{ $t('forms.bulk_intake.step2') }}
+            {{ $t('forms.add_asset.step2') }}
           </div>
           <q-toggle
             v-model="is_new_type"
-            :label="$t('forms.bulk_intake.create_new_model')"
+            :label="$t('forms.add_asset.create_new_model')"
             dense
             color="primary"
           />
@@ -48,7 +48,7 @@
         <div v-if="!is_new_type">
           <q-select
             v-model="form.type_id"
-            :label="$t('forms.bulk_intake.select_existing_model')"
+            :label="$t('forms.add_asset.select_existing_model')"
             :options="typeOptions"
             outlined
             emit-value
@@ -62,25 +62,25 @@
         >
           <q-input
             v-model="form.new_type.model_name"
-            :label="$t('forms.bulk_intake.model_name')"
+            :label="$t('forms.add_asset.model_name')"
             outlined
           />
           <q-input
             v-model="form.new_type.manufacturer"
-            :label="$t('forms.bulk_intake.manufacturer')"
+            :label="$t('forms.add_asset.manufacturer')"
             outlined
           />
           <div class="row gap-3">
             <q-input
               v-model="form.new_type.category"
-              :label="$t('forms.bulk_intake.category')"
+              :label="$t('forms.add_asset.category')"
               outlined
               class="flex-1"
             />
             <q-input
               v-model.number="form.new_type.maintenance_interval_hrs"
               type="number"
-              :label="$t('forms.bulk_intake.interval_hours')"
+              :label="$t('forms.add_asset.interval_hours')"
               outlined
               class="flex-1"
             />
@@ -89,13 +89,13 @@
       </div>
 
       <div class="column gap-2">
-        <div class="text-overline text-primary font-bold">{{ $t('forms.bulk_intake.step3') }}</div>
+        <div class="text-overline text-primary font-bold">{{ $t('forms.add_asset.step3') }}</div>
         <q-input
           v-model="serial_input"
           type="textarea"
           outlined
-          :placeholder="$t('forms.bulk_intake.serial_placeholder')"
-          :hint="$t('forms.bulk_intake.serial_hint')"
+          :placeholder="$t('forms.add_asset.serial_placeholder')"
+          :hint="$t('forms.add_asset.serial_hint')"
           rows="5"
         />
       </div>
@@ -105,7 +105,7 @@
       <q-btn
         flat
         rounded
-        :label="$t('forms.bulk_intake.discard')"
+        :label="$t('forms.add_asset.discard')"
         color="negative"
         @click="onDialogCancel"
       />
@@ -113,7 +113,7 @@
         unelevated
         rounded
         color="primary"
-        :label="$t('forms.bulk_intake.finalize')"
+        :label="$t('forms.add_asset.finalize')"
         class="q-px-xl"
         :loading="submitting"
         @click="handleSubmission"
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
@@ -158,8 +158,11 @@ const form = ref({
 
 const typeOptions = computed(() => {
   const types_map = new Map();
-  assetStore.assets.forEach((a) => {
-    if (a.type) types_map.set(a.type.id, { label: a.type.model_name, value: a.type.id });
+  assetStore.assetTypes.forEach((type) => {
+    types_map.set(type.id, {
+      label: type.modelName || type.model_name,
+      value: type.id,
+    });
   });
   return Array.from(types_map.values());
 });
@@ -205,6 +208,12 @@ async function handleSubmission() {
     submitting.value = false;
   }
 }
+
+onMounted(async () => {
+  if (assetStore.assetTypes.length === 0) {
+    await assetStore.fetchAssetTypes();
+  }
+});
 </script>
 
 <style scoped>
