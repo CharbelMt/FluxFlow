@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
+import { submitUsageLog, syncPendingLogs } from 'src/services/usage_service';
 import type { AssetInstance, AssetType, Site } from 'src/utils/types';
 
 export interface AssetWithDetails extends AssetInstance {
@@ -7,11 +8,71 @@ export interface AssetWithDetails extends AssetInstance {
   site: Site;
 }
 
+export interface PendingAssetUpdate {
+  asset_id: string;
+  usage_hours: number;
+  update_notes: string;
+  status: string;
+  queued_at: string;
+  retry_count: number;
+}
+
+export interface SaveAssetUpdatePayload {
+  asset_id: string;
+  usage_hours: number;
+  update_notes: string;
+  status: string;
+}
+
+const pending_updates_storage_key = 'fluxflow_pending_asset_updates';
+
+function readPendingUpdates() {
+  if (typeof window === 'undefined') {
+    return [] as PendingAssetUpdate[];
+  }
+
+  try {
+    const stored_pending_updates = localStorage.getItem(pending_updates_storage_key);
+    if (!stored_pending_updates) {
+      return [] as PendingAssetUpdate[];
+    }
+
+    return JSON.parse(stored_pending_updates) as PendingAssetUpdate[];
+  } catch (error) {
+    console.error('Failed to read pending asset updates.', error);
+    return [] as PendingAssetUpdate[];
+  }
+}
+
+function writePendingUpdates(pending_updates: PendingAssetUpdate[]) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if (pending_updates.length === 0) {
+    localStorage.removeItem(pending_updates_storage_key);
+    return;
+  }
+
+  localStorage.setItem(pending_updates_storage_key, JSON.stringify(pending_updates));
+}
+
+function isNetworkFailure(error: unknown) {
+  const axios_error = error as { code?: string; message?: string; response?: unknown };
+
+  return (
+    axios_error.code === 'ERR_NETWORK' ||
+    axios_error.message === 'Network Error' ||
+    axios_error.response === undefined
+  );
+}
+
 export const useAssetStore = defineStore('assets', {
   state: () => ({
     assets: [] as AssetWithDetails[],
     assetTypes: [] as AssetType[],
     loading: false,
+    pending_updates: readPendingUpdates() as PendingAssetUpdate[],
   }),
 
   actions: {
@@ -28,6 +89,25 @@ export const useAssetStore = defineStore('assets', {
     async fetchAssetTypes() {
       const response = await api.get('/assets/types');
       this.assetTypes = response.data;
+    },
+
+    async fetchAssetById(asset_id: string) {
+      const response = await api.get(`/assets/${asset_id}`);
+      return response.data as { success: true; asset: AssetWithDetails };
+    },
+
+    async saveAssetUpdate(update_data: SaveAssetUpdatePayload) {
+      const result = await submitUsageLog({
+        asset_id: update_data.asset_id,
+        runtime_hours: update_data.usage_hours,
+        update_notes: update_data.update_notes,
+        status: update_data.status,
+      });
+      return result;
+    },
+
+    async syncPendingUpdates() {
+      return await syncPendingLogs();
     },
 
     async bulkCreateAssets(payload: {
