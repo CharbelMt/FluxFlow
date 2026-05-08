@@ -4,7 +4,7 @@
       <!-- Asset Detail View -->
       <template v-if="scanned_item.type === 'asset'">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Asset Details</div>
+          <div class="text-h6">{{ $t('scanner_detail.title') }}</div>
           <q-space />
           <q-icon name="close" class="cursor-pointer" @click="emit('close')" />
         </q-card-section>
@@ -16,21 +16,21 @@
             <!-- Left Column: Asset Information -->
             <div class="col-12 col-md-6">
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Asset ID</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.asset_id') }}</div>
                 <div class="text-body2 text-weight-bold">{{ scanned_item.data.id }}</div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Serial Number</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.serial_number') }}</div>
                 <div class="text-body2 text-weight-bold">
                   {{ getSerialNumber(scanned_item.data) }}
                 </div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Status</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.status') }}</div>
                 <q-chip
-                  :label="scanned_item.data.status || ''"
+                  :label="getStatusLabel(scanned_item.data.status || '')"
                   :color="getStatusColor(scanned_item.data.status || '')"
                   text-color="white"
                   size="sm"
@@ -38,7 +38,7 @@
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Hours Used</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.hours_used') }}</div>
                 <div class="text-body2">
                   {{ getTotalHoursUsed(scanned_item.data) }}
                 </div>
@@ -48,26 +48,29 @@
             <!-- Right Column: Type Information -->
             <div class="col-12 col-md-6" v-if="scanned_item.data.type">
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Model</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.model') }}</div>
                 <div class="text-body2 text-weight-bold">
                   {{ getModelName(scanned_item.data.type) }}
                 </div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Manufacturer</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.manufacturer') }}</div>
                 <div class="text-body2">{{ scanned_item.data.type.manufacturer }}</div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Category</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.category') }}</div>
                 <div class="text-body2">{{ scanned_item.data.type.category }}</div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Maintenance Interval</div>
+                <div class="text-overline text-grey">
+                  {{ $t('scanner_detail.maintenance_interval') }}
+                </div>
                 <div class="text-body2">
-                  {{ getMaintenanceInterval(scanned_item.data.type) }} hrs
+                  {{ getMaintenanceInterval(scanned_item.data.type) }}
+                  {{ $t('scanner_detail.hours_suffix') }}
                 </div>
               </div>
             </div>
@@ -78,7 +81,7 @@
           <!-- Location Information -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6" v-if="scanned_item.data.site">
-              <div class="text-overline text-grey">Assigned Site</div>
+              <div class="text-overline text-grey">{{ $t('scanner_detail.assigned_site') }}</div>
               <div class="text-body2 text-weight-bold">
                 {{ scanned_item.data.site.name }}
               </div>
@@ -88,7 +91,7 @@
             </div>
 
             <div class="col-12 col-md-6" v-if="scanned_item.data.room">
-              <div class="text-overline text-grey">Current Room</div>
+              <div class="text-overline text-grey">{{ $t('scanner_detail.current_room') }}</div>
               <div class="text-body2 text-weight-bold">
                 {{ getRoomLabel(scanned_item.data.room) }}
               </div>
@@ -101,10 +104,10 @@
 
         <!-- Action Buttons -->
         <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" @click="emit('close')" />
+          <q-btn flat :label="$t('scanner_detail.close')" color="primary" @click="emit('close')" />
           <q-btn
             unelevated
-            label="View History"
+            :label="$t('scanner_detail.view_history')"
             color="primary"
             @click="emit('view-history', scanned_item.data.id)"
           />
@@ -114,7 +117,7 @@
       <!-- Room Detail View -->
       <template v-else-if="scanned_item.type === 'room'">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Storage Room Details</div>
+          <div class="text-h6">{{ $t('scanner_detail.storage_room_title') }}</div>
           <q-space />
           <q-icon name="close" class="cursor-pointer" @click="emit('close')" />
         </q-card-section>
@@ -125,33 +128,33 @@
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Room ID</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.room_id') }}</div>
                 <div class="text-body2 text-weight-bold">{{ scanned_item.data.id }}</div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Room Label</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.room_label') }}</div>
                 <div class="text-body2 text-weight-bold">
                   {{ getRoomLabel(scanned_item.data) }}
                 </div>
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Room Tag UID</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.room_tag_uid') }}</div>
                 <div class="text-body2">{{ getRoomTagUid(scanned_item.data) }}</div>
               </div>
             </div>
 
             <div class="col-12 col-md-6" v-if="scanned_item.data.site">
               <div class="q-mb-md">
-                <div class="text-overline text-grey">Site</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.site') }}</div>
                 <div class="text-body2 text-weight-bold">
                   {{ scanned_item.data.site.name }}
                 </div>
               </div>
 
               <div class="q-mb-md" v-if="scanned_item.data.site.location_gps">
-                <div class="text-overline text-grey">GPS Location</div>
+                <div class="text-overline text-grey">{{ $t('scanner_detail.gps_location') }}</div>
                 <div class="text-body2">{{ scanned_item.data.site.location_gps }}</div>
               </div>
             </div>
@@ -160,14 +163,14 @@
 
         <!-- Action Buttons -->
         <q-card-actions align="right">
-          <q-btn flat label="Close" color="primary" @click="emit('close')" />
+          <q-btn flat :label="$t('scanner_detail.close')" color="primary" @click="emit('close')" />
         </q-card-actions>
       </template>
     </q-card>
 
     <!-- Empty State -->
     <q-banner v-else-if="!is_loading && !has_error" class="bg-grey-2">
-      <div class="text-center text-grey">Scan a QR code to view details</div>
+      <div class="text-center text-grey">{{ $t('scanner_detail.empty_state') }}</div>
     </q-banner>
 
     <!-- Error State -->
@@ -178,7 +181,7 @@
         <q-space />
         <q-btn
           unelevated
-          label="Dismiss"
+          :label="$t('scanner_detail.dismiss')"
           color="white"
           text-color="negative"
           @click="emit('clear')"
@@ -192,6 +195,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import type { ScannedAssetData, ScannedItem, ScannedRoomData } from 'src/utils/types';
 
 interface Props {
@@ -202,6 +206,8 @@ interface Props {
 }
 
 defineProps<Props>();
+
+const { t: $t } = useI18n();
 
 const emit = defineEmits<{
   close: [];
@@ -220,6 +226,20 @@ const getMaintenanceInterval = (assetType?: ScannedAssetData['type']) =>
   assetType?.maintenanceIntervalHrs || assetType?.maintenance_interval_hrs || 0;
 const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
 const getRoomTagUid = (room: ScannedRoomData) => room.roomTagUid || room.room_tag_uid || '';
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'on_site':
+      return $t('scanner_detail.status_on_site');
+    case 'in_transit':
+      return $t('scanner_detail.status_in_transit');
+    case 'maintenance':
+      return $t('scanner_detail.status_maintenance');
+    case 'offline':
+      return $t('scanner_detail.status_offline');
+    default:
+      return status;
+  }
+};
 
 const getStatusColor = (status: string) => {
   const status_colors: Record<string, string> = {

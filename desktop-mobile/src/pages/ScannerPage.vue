@@ -1,196 +1,282 @@
 <template>
   <div class="scanner-page q-pa-md">
-    <div class="row items-start q-col-gutter-sm">
-      <!-- Scanner Section -->
-      <div class="col-12">
-        <q-card class="sticky" style="top: 20px">
-          <q-card-section class="bg-primary text-white">
-            <div class="text-h6">{{ $t('scanner.title') }}</div>
-          </q-card-section>
+    <q-card class="scanner-card">
+      <q-card-section class="bg-primary text-white">
+        <div class="text-h6">{{ $t('scanner.title') }}</div>
+        <div class="text-caption opacity-80">{{ $t('scanner.description') }}</div>
+      </q-card-section>
 
-          <q-separator />
+      <q-card-section>
+        <q-banner v-if="scan_status" class="bg-blue-1 text-blue-10 q-mb-md rounded-borders">
+          {{ scan_status }}
+        </q-banner>
 
-          <q-card-section>
-            <!-- Scanner Input -->
-            <div class="q-mb-md">
-              <q-input
-                ref="input_ref"
-                v-model="scanner_input"
-                :label="$t('scanner.input_label')"
-                outlined
-                dense
-                @keydown.enter="handleScan"
-                autofocus
-                class="q-mb-md"
-              >
-                <template #prepend>
-                  <q-icon name="qr_code_2" />
-                </template>
-                <template #append>
-                  <q-icon
-                    v-if="scanner_input"
-                    name="close"
-                    class="cursor-pointer"
-                    @click="scanner_input = ''"
-                  />
-                </template>
-              </q-input>
-
-              <q-btn
-                unelevated
-                :label="$t('scanner.scan_button')"
-                color="primary"
-                class="full-width"
-                :loading="useScanner_instance.is_loading.value"
-                @click="handleScan"
-              />
-            </div>
-
-            <!-- Recent Scans -->
-            <div v-if="recent_scans.length > 0" class="q-mt-lg">
-              <div class="text-subtitle2 q-mb-md">
-                {{ $t('scanner.recent_scans') }}
-              </div>
-              <q-list bordered separator>
-                <q-item
-                  v-for="(scan, index) in recent_scans"
-                  :key="index"
-                  clickable
-                  @click="
-                    () => {
-                      scanner_input = scan.uuid;
-                      handleScan();
-                    }
-                  "
-                >
-                  <q-item-section avatar>
-                    <q-icon
-                      :name="scan.type === 'asset' ? 'inventory_2' : 'store'"
-                      :color="scan.type === 'asset' ? 'blue' : 'orange'"
-                    />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label>{{ scan.label }}</q-item-label>
-                    <q-item-label caption>{{ scan.uuid }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side top>
-                    <div class="text-grey text-xs">{{ formatTime(scan.timestamp) }}</div>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Detail View Section -->
-      <div class="col-12">
-        <ScannerDetailView
-          :scanned_item="useScanner_instance.scanned_item.value"
-          :is_loading="useScanner_instance.is_loading.value"
-          :error_message="useScanner_instance.error_message.value"
-          :has_error="useScanner_instance.has_error.value"
-          @close="handleClose"
-          @view-history="handleViewHistory"
-          @clear="useScanner_instance.clearScannedItem()"
+        <q-btn
+          unelevated
+          color="primary"
+          class="full-width q-mb-sm"
+          icon="qr_code_scanner"
+          :label="$t('scanner.scan_button')"
+          :loading="is_scanning"
+          @click="startNativeScan"
         />
-      </div>
+
+        <q-btn
+          v-if="is_scanning"
+          outline
+          color="negative"
+          class="full-width"
+          icon="close"
+          :label="$t('common.cancel')"
+          @click="cancelNativeScan"
+        />
+
+        <div v-if="recent_scans.length > 0" class="q-mt-lg">
+          <div class="text-subtitle2 q-mb-sm">{{ $t('scanner.recent_scans') }}</div>
+          <q-list bordered separator>
+            <q-item
+              v-for="(scan, index) in recent_scans"
+              :key="index"
+              clickable
+              @click="goToAssetDetail(scan.asset_id)"
+            >
+              <q-item-section avatar>
+                <q-icon name="inventory_2" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ scan.label }}</q-item-label>
+                <q-item-label caption>{{ scan.asset_id }}</q-item-label>
+              </q-item-section>
+              <q-item-section side top>
+                <div class="text-grey text-xs">{{ formatTime(scan.timestamp) }}</div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <div v-if="is_scanning" class="scan-overlay">
+      <q-card class="scan-overlay-card">
+        <q-card-section class="row items-center no-wrap q-pa-sm">
+          <q-icon name="camera_alt" color="white" class="q-mr-sm" />
+          <div class="text-white text-caption">{{ $t('scanner.scanning_progress') }}</div>
+          <q-space />
+          <q-btn
+            flat
+            dense
+            color="white"
+            icon="close"
+            :label="$t('common.cancel')"
+            @click="cancelNativeScan"
+          />
+        </q-card-section>
+      </q-card>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useScanner } from 'src/composables/useScanner';
-import ScannerDetailView from 'src/components/ScannerDetailView.vue';
-import type { ScannedAssetData, ScannedItem, ScannedRoomData } from 'src/utils/types';
 
 interface RecentScan {
-  uuid: string;
+  asset_id: string;
   label: string;
-  type: 'asset' | 'room';
   timestamp: number;
 }
 
-const router = useRouter();
-const { t } = useI18n();
-const useScanner_instance = useScanner();
+type ListenerHandle = {
+  remove: () => Promise<void>;
+};
 
-const scanner_input = ref('');
-const input_ref = ref();
+const router_instance = useRouter();
+const $q = useQuasar();
+const { t } = useI18n();
+
 const recent_scans = ref<RecentScan[]>([]);
+const is_scanning = ref(false);
+const scan_status = ref('');
+
+let barcodes_listener: ListenerHandle | null = null;
+let scan_error_listener: ListenerHandle | null = null;
 
 const MAX_RECENT_SCANS = 5;
 
 onMounted(() => {
-  // Load recent scans from localStorage
-  const stored_scans = localStorage.getItem('scanner_recent_scans');
-  if (stored_scans) {
-    recent_scans.value = JSON.parse(stored_scans);
-  }
-
-  // Focus the input field
-  if (input_ref.value) {
-    input_ref.value.focus();
+  const stored_scans_raw = localStorage.getItem('scanner_recent_scans');
+  if (stored_scans_raw) {
+    recent_scans.value = JSON.parse(stored_scans_raw) as RecentScan[];
   }
 });
 
-const handleScan = async () => {
-  const uuid = scanner_input.value.trim();
-  if (!uuid) return;
+onBeforeUnmount(() => {
+  void stopNativeScan();
+});
 
-  await useScanner_instance.processScanUuid(uuid);
+function getPlatformName() {
+  return (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
+}
 
-  // Add to recent scans if successful
-  if (useScanner_instance.scanned_item.value) {
-    const scanned_item = useScanner_instance.scanned_item.value as ScannedItem;
-    const label =
-      scanned_item.type === 'asset'
-        ? `${getSerialNumber(scanned_item.data)} - ${getModelName(scanned_item.data.type)}`
-        : `${getRoomLabel(scanned_item.data)}`;
+function isPermissionGranted(permission_state: string) {
+  return permission_state === 'granted' || permission_state === 'limited';
+}
 
-    const new_scan: RecentScan = {
-      uuid,
-      label,
-      type: scanned_item.type,
-      timestamp: Date.now(),
-    };
+function extractAssetId(raw_qr_data: string) {
+  const qr_payload = raw_qr_data.trim();
 
-    // Remove duplicates and add to front
-    recent_scans.value = [new_scan, ...recent_scans.value.filter((s) => s.uuid !== uuid)].slice(
-      0,
-      MAX_RECENT_SCANS,
-    );
+  if (!qr_payload) {
+    return '';
+  }
 
-    // Save to localStorage
-    localStorage.setItem('scanner_recent_scans', JSON.stringify(recent_scans.value));
-
-    // Clear input
-    scanner_input.value = '';
-
-    // Refocus input
-    if (input_ref.value) {
-      input_ref.value.focus();
+  try {
+    const parsed_url = new URL(qr_payload);
+    const query_asset_id = parsed_url.searchParams.get('asset_id');
+    if (query_asset_id) {
+      return query_asset_id.trim();
     }
-  }
-};
 
-const handleClose = () => {
-  useScanner_instance.clearScannedItem();
-  scanner_input.value = '';
-  if (input_ref.value) {
-    input_ref.value.focus();
-  }
-};
+    const path_parts = parsed_url.pathname.split('/').filter(Boolean);
+    return path_parts.at(-1)?.trim() || qr_payload;
+  } catch {
+    const query_match = qr_payload.match(/[?&]asset_id=([^&]+)/i);
+    if (query_match?.[1]) {
+      return decodeURIComponent(query_match[1]).trim();
+    }
 
-const handleViewHistory = async (asset_id: string) => {
-  await router.push({
-    name: 'assets',
+    return qr_payload;
+  }
+}
+
+function persistRecentScans(asset_id: string) {
+  const new_scan: RecentScan = {
+    asset_id,
+    label: t('scanner.asset_label', { assetId: asset_id }),
+    timestamp: Date.now(),
+  };
+
+  recent_scans.value = [
+    new_scan,
+    ...recent_scans.value.filter((scan) => scan.asset_id !== asset_id),
+  ].slice(0, MAX_RECENT_SCANS);
+
+  localStorage.setItem('scanner_recent_scans', JSON.stringify(recent_scans.value));
+}
+
+async function goToAssetDetail(asset_id: string) {
+  await router_instance.push({
+    name: 'asset-detail',
     params: { asset_id },
   });
-};
+}
+
+async function stopNativeScan() {
+  document.body.classList.remove('barcode-scanner-active');
+
+  if (barcodes_listener) {
+    await barcodes_listener.remove();
+    barcodes_listener = null;
+  }
+
+  if (scan_error_listener) {
+    await scan_error_listener.remove();
+    scan_error_listener = null;
+  }
+
+  try {
+    await BarcodeScanner.stopScan();
+  } catch {
+    // no-op: scanner can already be stopped
+  }
+
+  is_scanning.value = false;
+}
+
+async function startNativeScan() {
+  if (is_scanning.value) {
+    return;
+  }
+
+  scan_status.value = '';
+
+  const supported_result = await BarcodeScanner.isSupported();
+  if (!supported_result.supported) {
+    scan_status.value = t('scanner.native_not_supported');
+    $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+    return;
+  }
+
+  const platform_name = getPlatformName();
+  if (platform_name === 'android') {
+    const permissions_before = await BarcodeScanner.checkPermissions();
+    if (!isPermissionGranted(permissions_before.camera)) {
+      const permissions_after = await BarcodeScanner.requestPermissions();
+      if (!isPermissionGranted(permissions_after.camera)) {
+        scan_status.value = t('scanner.camera_permission_required');
+        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+        return;
+      }
+    }
+  }
+
+  is_scanning.value = true;
+  scan_status.value = t('scanner.scanning_prompt');
+
+  document.body.classList.add('barcode-scanner-active');
+
+  barcodes_listener = await BarcodeScanner.addListener(
+    'barcodesScanned',
+    (event: { barcodes: Array<{ rawValue?: string; displayValue?: string }> }) => {
+      const first_barcode = event.barcodes[0];
+      const raw_qr_data = first_barcode?.rawValue || first_barcode?.displayValue || '';
+
+      if (!raw_qr_data) {
+        return;
+      }
+
+      const asset_id = extractAssetId(raw_qr_data);
+      if (!asset_id) {
+        scan_status.value = t('scanner.invalid_asset_id');
+        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+        return;
+      }
+
+      persistRecentScans(asset_id);
+      void (async () => {
+        await stopNativeScan();
+        await goToAssetDetail(asset_id);
+      })();
+    },
+  );
+
+  scan_error_listener = await BarcodeScanner.addListener(
+    'scanError',
+    (event: { message?: string }) => {
+      scan_status.value = event.message || t('scanner.scanner_error');
+      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+      void stopNativeScan();
+    },
+  );
+
+  try {
+    await BarcodeScanner.startScan({
+      formats: [BarcodeFormat.QrCode],
+    });
+  } catch (error) {
+    console.error('Unable to start native scan:', error);
+    scan_status.value = t('scanner.unable_to_start');
+    $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+    await stopNativeScan();
+  }
+}
+
+async function cancelNativeScan() {
+  scan_status.value = t('scanner.scan_canceled');
+  await stopNativeScan();
+}
 
 const formatTime = (timestamp: number) => {
   const now = Date.now();
@@ -203,28 +289,19 @@ const formatTime = (timestamp: number) => {
   if (hours < 24) return t('scanner.hours_ago', { count: hours });
   return new Date(timestamp).toLocaleDateString();
 };
-
-// Helper functions
-const getSerialNumber = (asset: ScannedAssetData) =>
-  asset.serialNumber || asset.serial_number || '';
-const getModelName = (assetType?: ScannedAssetData['type']) =>
-  assetType?.modelName || assetType?.model_name || '';
-const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
 </script>
 
 <style scoped lang="scss">
 .scanner-page {
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 72px);
   max-width: 560px;
   margin: 0 auto;
 
-  .sticky {
-    position: static;
-  }
+  position: relative;
 
-  :deep(.q-card) {
-    border-radius: 8px;
+  :deep(.scanner-card) {
+    border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 
@@ -233,9 +310,51 @@ const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_labe
   }
 }
 
+.scan-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4000;
+  padding: 12px;
+}
+
+.scan-overlay-card {
+  max-width: 560px;
+  margin: 0 auto;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+}
+
 @media (min-width: 768px) {
   .scanner-page {
     max-width: 640px;
   }
+
+  .scan-overlay-card {
+    max-width: 640px;
+  }
+}
+</style>
+
+<style lang="scss">
+body.barcode-scanner-active {
+  background: transparent !important;
+  --q-background: transparent !important;
+}
+
+body.barcode-scanner-active .q-layout,
+body.barcode-scanner-active .q-page-container,
+body.barcode-scanner-active .scanner-page {
+  background: transparent !important;
+}
+
+body.barcode-scanner-active .scanner-card {
+  visibility: hidden;
+}
+
+body.barcode-scanner-active .scan-overlay {
+  visibility: visible;
 }
 </style>
