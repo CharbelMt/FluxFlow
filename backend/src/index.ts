@@ -27,11 +27,6 @@ const app = new Elysia()
 		}),
 	)
 
-	.get("/test-db", async () => {
-		const all_sites = await db.query.sites.findMany();
-		return { message: "Connection Secure!", count: all_sites.length };
-	})
-
 	.post(
 		"/login",
 		async ({ body, set, jwt }) => {
@@ -63,58 +58,6 @@ const app = new Elysia()
 			body: t.Object({
 				email: t.String(),
 				password: t.String(),
-			}),
-		},
-	)
-
-	.post(
-		"/users",
-		async ({ body, set }) => {
-			const creator_record = await db.query.users.findFirst({
-				where: eq(schema.users.id, body.admin_id),
-			});
-
-			if (!creator_record || creator_record.role !== "admin") {
-				set.status = 403;
-				return { error: "Forbidden: Only admins can create users." };
-			}
-
-			const temporary_hash = await Bun.password.hash(body.password);
-
-			try {
-				const new_user = await db
-					.insert(schema.users)
-					.values({
-						fullName: body.full_name,
-						email: body.email,
-						passwordHash: temporary_hash,
-						role: body.role,
-					})
-					.returning();
-
-				if (!new_user[0]) {
-					set.status = 400;
-					return { error: "Failed to create user." };
-				}
-
-				const { passwordHash, ...safe_user } = new_user[0];
-				return { success: true, user: safe_user };
-			} catch (err) {
-				set.status = 400;
-				return { error: "Could not create user. Email might already exist." };
-			}
-		},
-		{
-			body: t.Object({
-				admin_id: t.String(),
-				full_name: t.String(),
-				email: t.String(),
-				password: t.String(),
-				role: t.Union([
-					t.Literal("admin"),
-					t.Literal("manager"),
-					t.Literal("supervisor"),
-				]),
 			}),
 		},
 	)
@@ -314,43 +257,8 @@ const app = new Elysia()
 			),
 	)
 
-	.post(
-		"/sites/:siteId/storage-rooms",
-		async ({ params, body, set }) => {
-			const existing_site = await db.query.sites.findFirst({
-				where: eq(schema.sites.id, params.siteId),
-			});
-
-			if (!existing_site) {
-				set.status = 404;
-				return { error: "Site not found." };
-			}
-
-			const new_room = await db
-				.insert(schema.storageRooms)
-				.values({
-					siteId: params.siteId,
-					roomLabel: body.room_label,
-					roomTagUid: body.room_tag_uid,
-				})
-				.returning();
-
-			return { success: true, room: new_room[0] };
-		},
-		{
-			params: t.Object({
-				siteId: t.String(),
-			}),
-			body: t.Object({
-				room_label: t.String(),
-				room_tag_uid: t.String(),
-			}),
-		},
-	)
-
 	.group("/storage-rooms", (app) =>
 		app
-			// NEW: Added endpoint to fetch a single room when scanned
 			.get(
 				"/:room_id",
 				async ({ params, set }) => {
@@ -693,6 +601,93 @@ const app = new Elysia()
 				{
 					params: t.Object({
 						asset_id: t.String(),
+					}),
+				},
+			)
+
+			.post(
+				"/:asset_id/usage",
+				async ({ params, body, set }) => {
+					const supervisor_record = await db.query.users.findFirst({
+						where: eq(schema.users.id, body.supervisor_id),
+					});
+
+					if (!supervisor_record || supervisor_record.role !== "supervisor") {
+						set.status = 403;
+						return { error: "Forbidden: supervisor access required." };
+					}
+
+					const fetched_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.asset_id),
+					});
+
+					if (!fetched_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					if (body.runtime_hours <= 0) {
+						set.status = 400;
+						return { error: "runtime_hours must be greater than zero." };
+					}
+
+					const hours_increment = Math.max(0, Math.round(body.runtime_hours));
+
+					try {
+						const result = await db.transaction(async (tx) => {
+							const next_total_hours =
+								(fetched_asset.totalHoursUsed || 0) + hours_increment;
+							const next_version_clock = (fetched_asset.versionClock || 0) + 1;
+
+							const [updated_asset] = await tx
+								.update(schema.assetInstances)
+								.set({
+									totalHoursUsed: next_total_hours,
+									status: body.status,
+									versionClock: next_version_clock,
+								})
+								.where(eq(schema.assetInstances.id, params.asset_id))
+								.returning();
+
+							const [audit_log] = await tx
+								.insert(schema.auditLogs)
+								.values({
+									assetId: params.asset_id,
+									supervisorId: body.supervisor_id,
+									clientCreatedAt: body.timestamp,
+									actionType: "usage_update",
+									witnessGps: body.update_notes || null,
+									hoursUsedIncrement: hours_increment,
+									syncVersion: next_version_clock,
+								})
+								.returning();
+
+							return { updated_asset, audit_log };
+						});
+
+						return {
+							success: true,
+							asset: result.updated_asset,
+							audit_log: result.audit_log,
+						};
+					} catch (error) {
+						set.status = 400;
+						return {
+							error: "Failed to save usage log.",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						asset_id: t.String(),
+					}),
+					body: t.Object({
+						runtime_hours: t.Number(),
+						update_notes: t.Optional(t.String()),
+						status: t.String(),
+						supervisor_id: t.String(),
+						timestamp: t.String(),
 					}),
 				},
 			)
