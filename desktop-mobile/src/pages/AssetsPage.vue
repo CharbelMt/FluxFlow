@@ -206,7 +206,7 @@ const selectedSiteId = computed(() => {
 const selectedSiteName = computed(() => {
   if (!selectedSiteId.value) return '';
   const site = siteStore.sites.find((s) => s.id === selectedSiteId.value);
-  return site?.name || 'Selected Site';
+  return site?.name || $t('assets.selected_site');
 });
 
 const scopedRows = computed(() => {
@@ -343,6 +343,8 @@ async function generateAssetQr(asset: {
       subtitle,
       qrMarkup: response.qrSvg,
       metadata,
+      modelName: subtitle,
+      serialNumber: asset.serialNumber,
       context: 'asset',
     });
   } catch (error) {

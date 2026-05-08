@@ -126,7 +126,7 @@ function editModel(model_data: any) {
 function deleteModel(model_data: any) {
   $q.dialog({
     title: $t('assets.delete_model'),
-    message: `Delete model "${model_data.modelName}"?`,
+    message: $t('dialogs.delete_model_message', { modelName: model_data.modelName }),
     cancel: true,
     persistent: true,
     ok: {
