@@ -63,7 +63,6 @@ import { useQuasar } from 'quasar';
 interface Props {
   mode: 'create' | 'edit';
   model?: any;
-  // These props are injected by the Quasar Dialog plugin / useDialog
   onDialogOK?: () => void;
   onDialogCancel?: () => void;
 }
@@ -71,9 +70,6 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   mode: 'create',
 });
-
-// We no longer strictly need these emits if the plugin is handling the lifecycle
-const emit = defineEmits(['ok', 'hide']);
 
 const asset_store = useAssetStore();
 const { t: $t } = useI18n();
@@ -93,7 +89,6 @@ const getTitle = computed(() => {
 });
 
 function handleClose() {
-  // Use the injected prop to close the dialog
   props.onDialogCancel?.();
 }
 
@@ -114,7 +109,6 @@ async function saveModel() {
       $q.notify({ color: 'positive', message: $t('assets.model_created') });
     }
 
-    // Signal success and close
     props.onDialogOK?.();
   } catch (error) {
     console.error(error);

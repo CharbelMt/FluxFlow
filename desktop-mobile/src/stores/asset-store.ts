@@ -44,35 +44,12 @@ function readPendingUpdates() {
   }
 }
 
-function writePendingUpdates(pending_updates: PendingAssetUpdate[]) {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (pending_updates.length === 0) {
-    localStorage.removeItem(pending_updates_storage_key);
-    return;
-  }
-
-  localStorage.setItem(pending_updates_storage_key, JSON.stringify(pending_updates));
-}
-
-function isNetworkFailure(error: unknown) {
-  const axios_error = error as { code?: string; message?: string; response?: unknown };
-
-  return (
-    axios_error.code === 'ERR_NETWORK' ||
-    axios_error.message === 'Network Error' ||
-    axios_error.response === undefined
-  );
-}
-
 export const useAssetStore = defineStore('assets', {
   state: () => ({
     assets: [] as AssetWithDetails[],
     assetTypes: [] as AssetType[],
     loading: false,
-    pending_updates: readPendingUpdates() as PendingAssetUpdate[],
+    pending_updates: readPendingUpdates(),
   }),
 
   actions: {
