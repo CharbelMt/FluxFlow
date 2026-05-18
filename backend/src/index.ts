@@ -11,10 +11,16 @@ const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 const db = drizzle(client, { schema });
 
+const corsOrigin = process.env.CORS_ORIGIN
+	? process.env.CORS_ORIGIN.split(",")
+	: process.env.NODE_ENV !== "production"
+		? "*"
+		: "http://localhost:9300";
+
 const app = new Elysia()
 	.use(
 		cors({
-			origin: "http://localhost:9300",
+			origin: corsOrigin,
 			methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 			allowedHeaders: ["Content-Type", "Authorization"],
 		}),

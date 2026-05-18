@@ -1,5 +1,4 @@
-import { type PluginListenerHandle } from '@capacitor/core';
-import { Network, type ConnectionStatus } from '@capacitor/network';
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import {
@@ -41,6 +40,64 @@ type SyncablePendingLog = {
 let network_listener: PluginListenerHandle | null = null;
 let sync_in_progress = false;
 let engine_initialized = false;
+let network_warning_logged = false;
+
+type ConnectionStatus = {
+  connected: boolean;
+  connectionType?: string;
+};
+
+type NetworkPlugin = {
+  getStatus: () => Promise<ConnectionStatus>;
+  addListener: (
+    eventName: 'networkStatusChange',
+    listenerFunc: (status: ConnectionStatus) => void,
+  ) => Promise<PluginListenerHandle>;
+};
+
+const Network = registerPlugin<NetworkPlugin>('Network');
+
+function logNetworkFallbackOnce(error: unknown) {
+  if (network_warning_logged) {
+    return;
+  }
+
+  network_warning_logged = true;
+  console.warn('Network plugin unavailable; falling back to browser online status.', error);
+}
+
+async function getConnectionStatusSafe() {
+  if (!Capacitor.isPluginAvailable('Network')) {
+    return { connected: navigator.onLine };
+  }
+
+  try {
+    const status = await Network.getStatus();
+    return { connected: status.connected };
+  } catch (error) {
+    logNetworkFallbackOnce(error);
+    return { connected: navigator.onLine };
+  }
+}
+
+async function registerNetworkListenerSafe() {
+  if (!Capacitor.isPluginAvailable('Network')) {
+    return;
+  }
+
+  try {
+    network_listener = await Network.addListener(
+      'networkStatusChange',
+      (network_status: ConnectionStatus) => {
+        if (network_status.connected) {
+          void syncPendingLogs();
+        }
+      },
+    );
+  } catch (error) {
+    logNetworkFallbackOnce(error);
+  }
+}
 
 function isNetworkFailure(error: unknown) {
   const axios_error = error as { code?: string; message?: string; response?: unknown };
@@ -188,7 +245,7 @@ export async function syncPendingLogs() {
   let failed_count = 0;
 
   try {
-    const network_status = await Network.getStatus();
+    const network_status = await getConnectionStatusSafe();
     if (!network_status.connected) {
       return {
         success: true,
@@ -262,19 +319,12 @@ export async function initUsageSyncEngine() {
     return;
   }
 
-  const status = await Network.getStatus();
+  const status = await getConnectionStatusSafe();
   if (status.connected) {
     void syncPendingLogs();
   }
 
-  network_listener = await Network.addListener(
-    'networkStatusChange',
-    (network_status: ConnectionStatus) => {
-      if (network_status.connected) {
-        void syncPendingLogs();
-      }
-    },
-  );
+  await registerNetworkListenerSafe();
 
   engine_initialized = true;
 }

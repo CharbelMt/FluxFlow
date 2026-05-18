@@ -20,27 +20,54 @@ const is_web = Capacitor.getPlatform() === 'web';
 
 let db_connection: SQLiteDBConnection | null = null;
 let is_initialized = false;
+let is_unavailable = false;
+let initialization_error_logged = false;
 const sqlite_connection = new SQLiteConnection(CapacitorSQLite);
 
+function logUnavailableOnce(error: unknown) {
+  if (initialization_error_logged) {
+    return;
+  }
+
+  initialization_error_logged = true;
+  console.warn('SQLite storage is unavailable; offline usage logs will be skipped.', error);
+}
+
 async function getDbConnection() {
+  if (is_unavailable) {
+    throw new Error('SQLite storage is unavailable.');
+  }
+
   if (db_connection) {
     return db_connection;
   }
 
   if (is_web) {
-    await sqlite_connection.initWebStore();
+    try {
+      await sqlite_connection.initWebStore();
+    } catch (error) {
+      is_unavailable = true;
+      logUnavailableOnce(error);
+      throw error instanceof Error ? error : new Error(String(error));
+    }
   }
 
-  const connection = await sqlite_connection.createConnection(
-    database_name,
-    false,
-    'no-encryption',
-    1,
-    false,
-  );
-  await connection.open();
-  db_connection = connection;
-  return connection;
+  try {
+    const connection = await sqlite_connection.createConnection(
+      database_name,
+      false,
+      'no-encryption',
+      1,
+      false,
+    );
+    await connection.open();
+    db_connection = connection;
+    return connection;
+  } catch (error) {
+    is_unavailable = true;
+    logUnavailableOnce(error);
+    throw error instanceof Error ? error : new Error(String(error));
+  }
 }
 
 export async function initDatabase() {
@@ -48,18 +75,37 @@ export async function initDatabase() {
     return;
   }
 
-  const connection = await getDbConnection();
+  if (is_unavailable) {
+    is_initialized = true;
+    return;
+  }
 
-  await connection.execute(`
-    CREATE TABLE IF NOT EXISTS ${table_name} (
-      local_id INTEGER PRIMARY KEY AUTOINCREMENT,
-      asset_id TEXT NOT NULL,
-      runtime_hours REAL NOT NULL,
-      supervisor_id TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      sync_status TEXT NOT NULL CHECK(sync_status IN ('pending', 'synced', 'failed'))
-    );
-  `);
+  let connection: SQLiteDBConnection;
+
+  try {
+    connection = await getDbConnection();
+  } catch {
+    is_initialized = true;
+    return;
+  }
+
+  try {
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS ${table_name} (
+        local_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        asset_id TEXT NOT NULL,
+        runtime_hours REAL NOT NULL,
+        supervisor_id TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        sync_status TEXT NOT NULL CHECK(sync_status IN ('pending', 'synced', 'failed'))
+      );
+    `);
+  } catch (error) {
+    is_unavailable = true;
+    logUnavailableOnce(error);
+    is_initialized = true;
+    return;
+  }
 
   is_initialized = true;
 }
@@ -70,6 +116,10 @@ export async function saveLocalLog(
   },
 ) {
   await initDatabase();
+
+  if (is_unavailable) {
+    return { success: true, local_id: null };
+  }
 
   const connection = await getDbConnection();
   const sync_status = log_data.sync_status || 'pending';
@@ -105,6 +155,10 @@ export async function updateLocalLogStatus(
 ) {
   await initDatabase();
 
+  if (is_unavailable) {
+    return { success: true };
+  }
+
   const connection = await getDbConnection();
   await connection.run(
     `
@@ -121,6 +175,10 @@ export async function updateLocalLogStatus(
 export async function deleteLocalLog(local_id: number) {
   await initDatabase();
 
+  if (is_unavailable) {
+    return { success: true };
+  }
+
   const connection = await getDbConnection();
   await connection.run(
     `
@@ -135,6 +193,10 @@ export async function deleteLocalLog(local_id: number) {
 
 export async function getPendingLogs() {
   await initDatabase();
+
+  if (is_unavailable) {
+    return [] as OfflineUsageLog[];
+  }
 
   const connection = await getDbConnection();
   const result = await connection.query(`

@@ -105,6 +105,7 @@
     <q-footer v-if="$q.screen.xs" class="bg-white/90 backdrop-blur-lg border-t border-slate-200">
       <q-tabs
         no-caps
+        align="left"
         active-color="white"
         indicator-color="cyan-700"
         class="mobile-tabs text-slate-400 q-pb-safe"
@@ -221,11 +222,32 @@ async function handleLogout() {
 .mobile-tab {
   border-radius: 10px;
   margin: 6px 4px;
+  min-width: 92px;
 }
 
 .mobile-tab.q-router-link--exact-active {
   background: #0e7490;
   color: white !important;
+}
+
+.mobile-tabs {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mobile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobile-tabs :deep(.q-tabs__content) {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  min-width: max-content;
+}
+
+.mobile-tabs :deep(.q-tab) {
+  flex: 0 0 auto;
 }
 
 /* Smooth Navigation */
