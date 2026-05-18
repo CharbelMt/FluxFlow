@@ -64,6 +64,7 @@
         "
         class="q-px-xl"
         :loading="submitting"
+        :disable="submitting || !hasChanges"
         @click="handleSubmit"
       />
     </q-card-actions>
@@ -112,6 +113,26 @@ const form = ref({
     props.componentProps?.supervisor?.fullName || props.componentProps?.supervisor?.full_name || '',
   email: props.componentProps?.supervisor?.email || '',
   password: '',
+});
+
+const initialForm = {
+  full_name: form.value.full_name.trim(),
+  email: form.value.email.trim(),
+  password: '',
+};
+
+const hasChanges = computed(() => {
+  const current = {
+    full_name: form.value.full_name.trim(),
+    email: form.value.email.trim(),
+    password: form.value.password.trim(),
+  };
+
+  return (
+    current.full_name !== initialForm.full_name ||
+    current.email !== initialForm.email ||
+    current.password !== initialForm.password
+  );
 });
 
 const passwordRules = [

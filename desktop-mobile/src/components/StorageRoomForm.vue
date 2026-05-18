@@ -57,6 +57,7 @@
         "
         class="q-px-xl"
         :loading="submitting"
+        :disable="submitting || !hasChanges"
         @click="handleSubmit"
       />
     </q-card-actions>
@@ -99,6 +100,18 @@ const form = ref({
   room_label: props.componentProps?.room?.roomLabel || props.componentProps?.room?.room_label || '',
   room_tag_uid:
     props.componentProps?.room?.roomTagUid || props.componentProps?.room?.room_tag_uid || '',
+});
+
+const initialForm = {
+  room_label: form.value.room_label.trim(),
+  room_tag_uid: form.value.room_tag_uid.trim(),
+};
+
+const hasChanges = computed(() => {
+  return (
+    form.value.room_label.trim() !== initialForm.room_label ||
+    form.value.room_tag_uid.trim() !== initialForm.room_tag_uid
+  );
 });
 
 function generateRoomTagUid() {

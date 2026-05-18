@@ -116,6 +116,7 @@
         :label="$t('forms.add_asset.finalize')"
         class="q-px-xl"
         :loading="submitting"
+        :disable="submitting || !hasChanges"
         @click="handleSubmission"
       />
     </q-card-actions>
@@ -154,6 +155,34 @@ const form = ref({
     category: '',
     maintenance_interval_hrs: 0,
   },
+});
+
+const initialState = {
+  is_new_type: is_new_type.value,
+  serial_input: serial_input.value,
+  site_id: form.value.site_id,
+  room_id: form.value.room_id,
+  type_id: form.value.type_id,
+  new_type: {
+    model_name: form.value.new_type.model_name,
+    manufacturer: form.value.new_type.manufacturer,
+    category: form.value.new_type.category,
+    maintenance_interval_hrs: form.value.new_type.maintenance_interval_hrs,
+  },
+};
+
+const hasChanges = computed(() => {
+  return (
+    is_new_type.value !== initialState.is_new_type ||
+    serial_input.value !== initialState.serial_input ||
+    form.value.site_id !== initialState.site_id ||
+    form.value.room_id !== initialState.room_id ||
+    form.value.type_id !== initialState.type_id ||
+    form.value.new_type.model_name !== initialState.new_type.model_name ||
+    form.value.new_type.manufacturer !== initialState.new_type.manufacturer ||
+    form.value.new_type.category !== initialState.new_type.category ||
+    form.value.new_type.maintenance_interval_hrs !== initialState.new_type.maintenance_interval_hrs
+  );
 });
 
 const typeOptions = computed(() => {

@@ -45,6 +45,8 @@
           color="primary"
           unelevated
           :label="isEditMode ? $t('common.update') : $t('common.save')"
+          :loading="submitting"
+          :disable="submitting || !hasChanges"
           @click="saveModel"
           no-caps
           class="rounded-lg q-px-lg"
@@ -60,9 +62,17 @@ import { useAssetStore } from 'src/stores/asset-store';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 
+interface AssetModelInput {
+  id: string;
+  modelName?: string;
+  manufacturer?: string;
+  category?: string;
+  maintenanceIntervalHrs?: number;
+}
+
 interface Props {
   mode: 'create' | 'edit';
-  model?: any;
+  model?: AssetModelInput;
   onDialogOK?: () => void;
   onDialogCancel?: () => void;
 }
@@ -74,6 +84,7 @@ const props = withDefaults(defineProps<Props>(), {
 const asset_store = useAssetStore();
 const { t: $t } = useI18n();
 const $q = useQuasar();
+const submitting = ref(false);
 
 const isEditMode = computed(() => props.mode === 'edit');
 
@@ -82,6 +93,22 @@ const form = ref({
   manufacturer: props.model?.manufacturer || '',
   category: props.model?.category || '',
   maintenanceIntervalHrs: props.model?.maintenanceIntervalHrs || 0,
+});
+
+const initialForm = {
+  modelName: form.value.modelName.trim(),
+  manufacturer: form.value.manufacturer.trim(),
+  category: form.value.category.trim(),
+  maintenanceIntervalHrs: Number(form.value.maintenanceIntervalHrs) || 0,
+};
+
+const hasChanges = computed(() => {
+  return (
+    form.value.modelName.trim() !== initialForm.modelName ||
+    form.value.manufacturer.trim() !== initialForm.manufacturer ||
+    form.value.category.trim() !== initialForm.category ||
+    (Number(form.value.maintenanceIntervalHrs) || 0) !== initialForm.maintenanceIntervalHrs
+  );
 });
 
 const getTitle = computed(() => {
@@ -93,6 +120,9 @@ function handleClose() {
 }
 
 async function saveModel() {
+  if (!hasChanges.value || submitting.value) return;
+
+  submitting.value = true;
   try {
     const payload = {
       model_name: form.value.modelName,
@@ -113,6 +143,8 @@ async function saveModel() {
   } catch (error) {
     console.error(error);
     $q.notify({ color: 'negative', message: $t('errors.save_asset_failed') });
+  } finally {
+    submitting.value = false;
   }
 }
 </script>

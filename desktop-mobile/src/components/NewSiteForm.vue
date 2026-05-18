@@ -55,6 +55,7 @@
         :label="isEditMode ? $t('forms.new_site.save_changes') : $t('forms.new_site.create_site')"
         class="q-px-xl"
         :loading="submitting"
+        :disable="submitting || loadingSupervisors || !hasChanges"
         @click="handleSubmission"
       />
     </q-card-actions>
@@ -107,12 +108,30 @@ const form = ref({
     props.componentProps?.site?.location_gps || props.componentProps?.site?.locationGps || '',
 });
 
+const initialForm = {
+  name: form.value.name.trim(),
+  location_gps: form.value.location_gps.trim(),
+};
+const initialSelectedSupervisorIds = ref<string[]>([]);
+
 const supervisorOptions = computed(() =>
   supervisorStore.supervisors.map((supervisor) => ({
     label: `${supervisor.fullName} (${supervisor.email})`,
     value: supervisor.id,
   })),
 );
+
+const hasChanges = computed(() => {
+  const currentSupervisors = [...selectedSupervisorIds.value].sort();
+  const initialSupervisors = [...initialSelectedSupervisorIds.value].sort();
+
+  return (
+    form.value.name.trim() !== initialForm.name ||
+    form.value.location_gps.trim() !== initialForm.location_gps ||
+    currentSupervisors.length !== initialSupervisors.length ||
+    currentSupervisors.some((id, index) => id !== initialSupervisors[index])
+  );
+});
 
 async function loadSupervisorOptions(managerId: string) {
   loadingSupervisors.value = true;
@@ -125,6 +144,9 @@ async function loadSupervisorOptions(managerId: string) {
         targetSite?.supervisors
           .map((entry) => entry.supervisor?.id || entry.supervisorId)
           .filter(Boolean) || [];
+      initialSelectedSupervisorIds.value = [...selectedSupervisorIds.value];
+    } else {
+      initialSelectedSupervisorIds.value = [];
     }
   } finally {
     loadingSupervisors.value = false;
