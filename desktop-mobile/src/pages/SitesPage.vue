@@ -367,12 +367,15 @@ function generateRoomQr(
 
 onMounted(async () => {
   const managerId = authStore.user?.id as string | undefined;
+  const shouldLoadManagerData = authStore.user?.role === 'manager' && !!managerId;
 
   try {
     await Promise.all([
       siteStore.fetchSites(),
       assetStore.fetchAssets(),
-      managerId ? supervisorStore.fetchManagerSupervisorData(managerId) : Promise.resolve(),
+      shouldLoadManagerData
+        ? supervisorStore.fetchManagerSupervisorData(managerId)
+        : Promise.resolve(),
     ]);
   } catch (error) {
     console.error(error);

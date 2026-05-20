@@ -36,18 +36,20 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   Router.beforeEach((to) => {
     const authStore = useAuthStore();
+    const getHomeRoute = () =>
+      authStore.user?.role === 'supervisor' ? { name: 'scanner' } : { name: 'dashboard' };
 
     if (to.meta.requiresAuth && !authStore.token) {
       return '/login';
     }
 
     if (to.meta.guestOnly && authStore.token) {
-      return '/';
+      return getHomeRoute();
     }
 
     const allowed_roles = to.meta.allowedRoles as string[] | undefined;
     if (allowed_roles && authStore.user && !allowed_roles.includes(authStore.user.role)) {
-      return '/dashboard';
+      return getHomeRoute();
     }
 
     return true;

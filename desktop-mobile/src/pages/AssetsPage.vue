@@ -76,6 +76,7 @@
             </q-btn>
 
             <q-btn
+              v-if="!isSupervisor"
               color="primary"
               icon="add"
               :label="$t('assets.add_asset')"
@@ -86,6 +87,7 @@
             />
 
             <q-btn
+              v-if="!isSupervisor"
               flat
               color="slate-600"
               icon="category"
@@ -162,7 +164,12 @@
                     <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
                     <q-item-section>{{ $t('assets.generate_qr') }}</q-item-section>
                   </q-item>
-                  <q-item clickable class="text-negative" @click="confirmDeleteAsset(props.row)">
+                  <q-item
+                    v-if="!isSupervisor"
+                    clickable
+                    class="text-negative"
+                    @click="confirmDeleteAsset(props.row)"
+                  >
                     <q-item-section avatar><q-icon name="delete" /></q-item-section>
                     <q-item-section>{{ $t('assets.delete_item') }}</q-item-section>
                   </q-item>
@@ -181,6 +188,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
+import { useAuthStore } from 'src/stores/auth-store';
 import { useDialog } from 'src/composables/useDialog';
 import AssetsFormDialog from 'components/AssetsFormDialog.vue';
 import QrPreviewDialog from 'components/QrPreviewDialog.vue';
@@ -190,6 +198,7 @@ import { useQuasar } from 'quasar';
 
 const assetStore = useAssetStore();
 const siteStore = useSiteStore();
+const authStore = useAuthStore();
 const { pushDialog } = useDialog();
 const $q = useQuasar();
 const filter = ref('');
@@ -197,6 +206,7 @@ const statusFilters = ref<string[]>([]);
 const route = useRoute();
 const router = useRouter();
 const { t: $t } = useI18n();
+const isSupervisor = computed(() => authStore.user?.role === 'supervisor');
 
 const selectedSiteId = computed(() => {
   const value = route.query.siteId;

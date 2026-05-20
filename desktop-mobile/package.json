@@ -16,9 +16,12 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@capacitor-community/barcode-scanner": "^4.0.1",
     "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
     "@capacitor/network": "^8.0.1",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/android": "^8.3.4",
     "@quasar/extras": "^1.16.4",
     "axios": "^1.2.1",
     "pinia": "^3.0.1",
@@ -28,6 +31,7 @@
     "vue-router": "^5.0.3"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
     "@electron/packager": "^19.0.0",
     "@eslint/js": "^10.0.1",
     "@intlify/unplugin-vue-i18n": "^11.0.0",

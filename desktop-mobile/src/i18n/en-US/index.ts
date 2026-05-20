@@ -267,6 +267,8 @@ export default {
     scan_button: 'Scan',
     cancel: 'Cancel',
     scanning_progress: 'Scanning in progress...',
+    plugin_not_implemented:
+      'Barcode scanner plugin is not available on this build. Install the native plugin and run `npx cap sync`, or run the app on a device/emulator with the plugin installed.',
     native_not_supported: 'Native barcode scanning is not supported on this device.',
     camera_permission_required: 'Camera permission is required to scan asset QR tags.',
     scanning_prompt: 'Scanning... align the QR code inside the camera view.',

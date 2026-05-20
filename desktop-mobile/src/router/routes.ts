@@ -1,5 +1,4 @@
 import type { RouteRecordRaw } from 'vue-router';
-
 const routes: RouteRecordRaw[] = [
   {
     path: '/login',
@@ -14,17 +13,28 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: '',
-        redirect: { name: 'dashboard' },
+        redirect: () => {
+          try {
+            const raw = localStorage.getItem('user');
+            if (!raw) return { name: 'dashboard' };
+            const parsed = JSON.parse(raw);
+            return parsed?.role === 'supervisor' ? { name: 'scanner' } : { name: 'dashboard' };
+          } catch {
+            return { name: 'dashboard' };
+          }
+        },
       },
       {
         path: 'dashboard',
         name: 'dashboard',
         component: () => import('pages/DashboardPage.vue'),
+        meta: { allowedRoles: ['admin', 'manager'] },
       },
       {
         path: 'sites',
         name: 'sites',
         component: () => import('pages/SitesPage.vue'),
+        meta: { allowedRoles: ['admin', 'manager'] },
       },
       {
         path: 'assets',
@@ -41,12 +51,13 @@ const routes: RouteRecordRaw[] = [
         path: 'assets/models',
         name: 'asset-models',
         component: () => import('pages/AssetModelsPage.vue'),
-        meta: { showBackButton: true },
+        meta: { allowedRoles: ['admin', 'manager'], showBackButton: true },
       },
       {
         path: 'supervisors',
         name: 'supervisors',
         component: () => import('pages/SupervisorManagementPage.vue'),
+        meta: { allowedRoles: ['admin', 'manager'] },
       },
       {
         path: 'scanner',

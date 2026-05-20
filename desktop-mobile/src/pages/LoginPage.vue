@@ -148,7 +148,7 @@ async function onSubmit() {
     });
 
     if (success) {
-      await router.push('/');
+      await router.push(authStore.user?.role === 'supervisor' ? { name: 'scanner' } : '/');
     }
   } catch (error) {
     console.error('Login failed:', error);

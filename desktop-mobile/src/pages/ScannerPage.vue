@@ -78,7 +78,7 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { BarcodeFormat, BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -89,10 +89,6 @@ interface RecentScan {
   timestamp: number;
 }
 
-type ListenerHandle = {
-  remove: () => Promise<void>;
-};
-
 const router_instance = useRouter();
 const $q = useQuasar();
 const { t } = useI18n();
@@ -100,9 +96,6 @@ const { t } = useI18n();
 const recent_scans = ref<RecentScan[]>([]);
 const is_scanning = ref(false);
 const scan_status = ref('');
-
-let barcodes_listener: ListenerHandle | null = null;
-let scan_error_listener: ListenerHandle | null = null;
 
 const MAX_RECENT_SCANS = 5;
 
@@ -119,10 +112,6 @@ onBeforeUnmount(() => {
 
 function getPlatformName() {
   return (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
-}
-
-function isPermissionGranted(permission_state: string) {
-  return permission_state === 'granted' || permission_state === 'limited';
 }
 
 function extractAssetId(raw_qr_data: string) {
@@ -176,16 +165,6 @@ async function goToAssetDetail(asset_id: string) {
 async function stopNativeScan() {
   document.body.classList.remove('barcode-scanner-active');
 
-  if (barcodes_listener) {
-    await barcodes_listener.remove();
-    barcodes_listener = null;
-  }
-
-  if (scan_error_listener) {
-    await scan_error_listener.remove();
-    scan_error_listener = null;
-  }
-
   try {
     await BarcodeScanner.stopScan();
   } catch {
@@ -201,39 +180,34 @@ async function startNativeScan() {
   }
 
   scan_status.value = '';
-
-  const supported_result = await BarcodeScanner.isSupported();
-  if (!supported_result.supported) {
-    scan_status.value = t('scanner.native_not_supported');
-    $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-    return;
-  }
-
-  const platform_name = getPlatformName();
-  if (platform_name === 'android') {
-    const permissions_before = await BarcodeScanner.checkPermissions();
-    if (!isPermissionGranted(permissions_before.camera)) {
-      const permissions_after = await BarcodeScanner.requestPermissions();
-      if (!isPermissionGranted(permissions_after.camera)) {
-        scan_status.value = t('scanner.camera_permission_required');
-        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-        return;
+  try {
+    const platform_name = getPlatformName();
+    if (platform_name === 'android') {
+      const permissions_before = await BarcodeScanner.checkPermission({ force: true });
+      if (!permissions_before.granted) {
+        const permissions_after = await BarcodeScanner.checkPermission({ force: true });
+        if (!permissions_after.granted) {
+          scan_status.value = t('scanner.camera_permission_required');
+          $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+          return;
+        }
       }
     }
-  }
 
-  is_scanning.value = true;
-  scan_status.value = t('scanner.scanning_prompt');
+    is_scanning.value = true;
+    scan_status.value = t('scanner.scanning_prompt');
 
-  document.body.classList.add('barcode-scanner-active');
+    document.body.classList.add('barcode-scanner-active');
 
-  barcodes_listener = await BarcodeScanner.addListener(
-    'barcodesScanned',
-    (event: { barcodes: Array<{ rawValue?: string; displayValue?: string }> }) => {
-      const first_barcode = event.barcodes[0];
-      const raw_qr_data = first_barcode?.rawValue || first_barcode?.displayValue || '';
+    try {
+      // Community plugin: startScan returns a result when a barcode is found or the scan is cancelled
+      const result = await BarcodeScanner.startScan();
+      const raw_qr_data = result.hasContent ? result.content : '';
 
       if (!raw_qr_data) {
+        scan_status.value = t('scanner.scan_canceled');
+        $q.notify({ type: 'info', message: scan_status.value, position: 'top' });
+        await stopNativeScan();
         return;
       }
 
@@ -241,33 +215,33 @@ async function startNativeScan() {
       if (!asset_id) {
         scan_status.value = t('scanner.invalid_asset_id');
         $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+        await stopNativeScan();
         return;
       }
 
       persistRecentScans(asset_id);
-      void (async () => {
-        await stopNativeScan();
-        await goToAssetDetail(asset_id);
-      })();
-    },
-  );
+      await stopNativeScan();
+      await goToAssetDetail(asset_id);
+    } catch (error: unknown) {
+      console.error('Unable to start native scan:', error);
 
-  scan_error_listener = await BarcodeScanner.addListener(
-    'scanError',
-    (event: { message?: string }) => {
-      scan_status.value = event.message || t('scanner.scanner_error');
+      const message =
+        error instanceof Error && /not implemented/i.test(error.message)
+          ? t('scanner.plugin_not_implemented')
+          : t('scanner.unable_to_start');
+
+      scan_status.value = message;
       $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-      void stopNativeScan();
-    },
-  );
+      await stopNativeScan();
+    }
+  } catch (err: unknown) {
+    console.error('Barcode scanner initialization failed:', err);
+    const friendly =
+      err instanceof Error && /not implemented/i.test(err.message)
+        ? t('scanner.plugin_not_implemented')
+        : t('scanner.unable_to_start');
 
-  try {
-    await BarcodeScanner.startScan({
-      formats: [BarcodeFormat.QrCode],
-    });
-  } catch (error) {
-    console.error('Unable to start native scan:', error);
-    scan_status.value = t('scanner.unable_to_start');
+    scan_status.value = friendly;
     $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
     await stopNativeScan();
   }

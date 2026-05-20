@@ -1,0 +1,6 @@
+{
+  "appId": "com.fluxflow.app",
+  "appName": "FluxFlow",
+  "webDir": "src-capacitor/www",
+  "bundledWebRuntime": false
+}

@@ -155,6 +155,14 @@ const { t } = useI18n();
 const leftDrawerOpen = ref(false);
 
 const tabs = computed(() => {
+  if (authStore.user?.role === 'supervisor') {
+    return [
+      { name: 'scanner', label: t('navigation.scanner'), icon: mdiQrcodeScan },
+      { name: 'assets', label: t('navigation.assets'), icon: mdiPackageVariantClosed },
+      { name: 'account', label: t('navigation.account'), icon: mdiAccountCircle },
+    ];
+  }
+
   const base_tabs = [
     { name: 'dashboard', label: t('navigation.dashboard'), icon: mdiViewDashboard },
     { name: 'sites', label: t('navigation.sites'), icon: mdiMapMarkerRadius },
@@ -167,14 +175,6 @@ const tabs = computed(() => {
       name: 'supervisors',
       label: t('navigation.supervisors'),
       icon: mdiAccountSupervisor,
-    });
-  }
-
-  if (authStore.user?.role === 'supervisor') {
-    base_tabs.push({
-      name: 'scanner',
-      label: t('navigation.scanner'),
-      icon: mdiQrcodeScan,
     });
   }
 
