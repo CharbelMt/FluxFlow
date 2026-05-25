@@ -209,6 +209,7 @@ export const maintenanceRecords = pgTable(
 			.notNull(),
 		assetId: uuid("asset_id"),
 		serviceDate: date("service_date").default(sql`CURRENT_DATE`),
+		status: varchar({ length: 50 }).default("maintenance"),
 		technicianNotes: text("technician_notes"),
 	},
 	(table) => [

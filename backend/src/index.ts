@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { jwt } from "@elysiajs/jwt";
 import * as schema from "./db/schema";
 import cors from "@elysiajs/cors";
@@ -25,6 +25,133 @@ const app = new Elysia()
 			allowedHeaders: ["Content-Type", "Authorization"],
 		}),
 	)
+
+	.post("/usage/batch", async ({ body, set }) => {
+		if (!Array.isArray(body)) {
+			set.status = 400;
+			return { error: "Batch payload must be an array." };
+		}
+
+		const results = [] as Array<{
+			localId: number | null;
+			success: boolean;
+			reason: string | null;
+		}>;
+
+		for (const raw_item of body) {
+			const local_id =
+				typeof raw_item === "object" &&
+				raw_item !== null &&
+				"local_id" in raw_item
+					? Number((raw_item as { local_id?: unknown }).local_id)
+					: null;
+
+			const asset_id =
+				typeof raw_item === "object" &&
+				raw_item !== null &&
+				"asset_id" in raw_item
+					? String((raw_item as { asset_id?: unknown }).asset_id)
+					: "";
+
+			const runtime_hours =
+				typeof raw_item === "object" &&
+				raw_item !== null &&
+				"runtime_hours" in raw_item
+					? Number((raw_item as { runtime_hours?: unknown }).runtime_hours)
+					: Number.NaN;
+
+			const timestamp =
+				typeof raw_item === "object" &&
+				raw_item !== null &&
+				"timestamp" in raw_item
+					? String((raw_item as { timestamp?: unknown }).timestamp)
+					: "";
+
+			if (!asset_id) {
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: false,
+					reason: "invalid_asset_id",
+				});
+				continue;
+			}
+
+			if (!Number.isFinite(runtime_hours) || runtime_hours <= 0) {
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: false,
+					reason: "invalid_runtime_hours",
+				});
+				continue;
+			}
+
+			if (!timestamp || Number.isNaN(new Date(timestamp).getTime())) {
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: false,
+					reason: "invalid_timestamp",
+				});
+				continue;
+			}
+
+			const fetched_asset = await db.query.assetInstances.findFirst({
+				where: eq(schema.assetInstances.id, asset_id),
+				columns: {
+					id: true,
+					totalHoursUsed: true,
+					versionClock: true,
+				},
+			});
+
+			if (!fetched_asset) {
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: false,
+					reason: "asset_not_found",
+				});
+				continue;
+			}
+
+			try {
+				await db.transaction(async (tx) => {
+					const hours_increment = Math.max(0, Math.round(runtime_hours));
+					const next_total_hours =
+						(fetched_asset.totalHoursUsed || 0) + hours_increment;
+					const next_version_clock = (fetched_asset.versionClock || 0) + 1;
+
+					await tx
+						.update(schema.assetInstances)
+						.set({
+							totalHoursUsed: next_total_hours,
+							versionClock: next_version_clock,
+						})
+						.where(eq(schema.assetInstances.id, asset_id));
+
+					await tx.insert(schema.auditLogs).values({
+						assetId: asset_id,
+						clientCreatedAt: timestamp,
+						actionType: "usage_batch",
+						hoursUsedIncrement: hours_increment,
+						syncVersion: next_version_clock,
+					});
+				});
+
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: true,
+					reason: null,
+				});
+			} catch (error) {
+				results.push({
+					localId: Number.isFinite(local_id) ? local_id : null,
+					success: false,
+					reason: "server_error",
+				});
+			}
+		}
+
+		return results;
+	})
 
 	.use(
 		jwt({
@@ -555,6 +682,79 @@ const app = new Elysia()
 				{
 					params: t.Object({
 						asset_id: t.String(),
+					}),
+				},
+			)
+
+			.get(
+				"/:id/maintenance",
+				async ({ params, set }) => {
+					const fetched_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.id),
+						columns: { id: true },
+					});
+
+					if (!fetched_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					const maintenance_records =
+						await db.query.maintenanceRecords.findMany({
+							where: eq(schema.maintenanceRecords.assetId, params.id),
+							orderBy: [desc(schema.maintenanceRecords.serviceDate)],
+						});
+
+					return { success: true, maintenance_records };
+				},
+				{
+					params: t.Object({
+						id: t.String(),
+					}),
+				},
+			)
+
+			.post(
+				"/:id/maintenance",
+				async ({ params, body, set }) => {
+					const fetched_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.id),
+						columns: { id: true },
+					});
+
+					if (!fetched_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					try {
+						const [maintenance_record] = await db
+							.insert(schema.maintenanceRecords)
+							.values({
+								assetId: params.id,
+								serviceDate: body.service_date,
+								status: body.status,
+								technicianNotes: body.notes || null,
+							})
+							.returning();
+
+						return { success: true, maintenance_record };
+					} catch (error) {
+						set.status = 400;
+						return {
+							error: "Failed to save maintenance record.",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						id: t.String(),
+					}),
+					body: t.Object({
+						service_date: t.String(),
+						status: t.String(),
+						notes: t.Optional(t.String()),
 					}),
 				},
 			)
