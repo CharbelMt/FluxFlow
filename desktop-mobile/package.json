@@ -16,7 +16,6 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@capacitor-community/barcode-scanner": "^4.0.1",
     "@capacitor-community/sqlite": "^8.1.0",
     "@capacitor-mlkit/barcode-scanning": "^8.1.0",
     "@capacitor/network": "^8.0.1",
