@@ -84,6 +84,89 @@
             :label="$t('asset_detail.back_to_scanner')"
             @click="goToScanner"
           />
+
+          <q-separator class="q-my-lg" />
+
+          <div class="q-mb-md">
+            <div class="text-subtitle1 text-weight-bold q-mb-xs">
+              {{ $t('asset_detail.maintenance_title') }}
+            </div>
+            <div class="text-caption text-grey-7 q-mb-md">
+              {{ $t('asset_detail.maintenance_hint') }}
+            </div>
+
+            <div v-if="is_loading_maintenance" class="flex flex-center q-pa-md">
+              <q-spinner color="primary" size="24px" />
+            </div>
+
+            <q-list
+              v-else-if="maintenance_records.length > 0"
+              bordered
+              separator
+              class="rounded-borders q-mb-md"
+            >
+              <q-item v-for="record in maintenance_records" :key="record.id" class="q-py-sm">
+                <q-item-section>
+                  <q-item-label class="text-weight-medium">
+                    {{ formatServiceDate(record.serviceDate || record.service_date) }}
+                  </q-item-label>
+                  <q-item-label caption>
+                    {{ record.technicianNotes || record.technician_notes || '-' }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-chip
+                    color="primary"
+                    text-color="white"
+                    size="sm"
+                    :label="getStatusLabel(record.status)"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <q-banner v-else class="bg-grey-2 text-grey-8 rounded-borders q-mb-md">
+              {{ $t('asset_detail.maintenance_empty') }}
+            </q-banner>
+
+            <div class="q-gutter-md q-mb-sm">
+              <q-input
+                v-model="maintenance_form.service_date"
+                type="date"
+                outlined
+                dense
+                :label="$t('asset_detail.maintenance_date')"
+              />
+
+              <q-select
+                v-model="maintenance_form.status"
+                :options="status_options"
+                outlined
+                dense
+                emit-value
+                map-options
+                :label="$t('asset_detail.maintenance_status')"
+              />
+
+              <q-input
+                v-model="maintenance_form.notes"
+                type="textarea"
+                outlined
+                autogrow
+                dense
+                :label="$t('asset_detail.maintenance_notes')"
+              />
+            </div>
+
+            <q-btn
+              unelevated
+              color="secondary"
+              class="full-width"
+              :label="$t('asset_detail.maintenance_add')"
+              :loading="is_saving_maintenance"
+              @click="saveMaintenanceRecord"
+            />
+          </div>
         </q-card-section>
 
         <q-card-section v-else class="q-pa-lg">
@@ -112,7 +195,7 @@ import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useDialog } from 'src/composables/useDialog';
 import ConfirmSaveDialog from 'components/dialog/ConfirmSaveDialog.vue';
-import type { AssetInstance } from 'src/utils/types';
+import type { AssetInstance, MaintenanceRecord } from 'src/utils/types';
 
 const route = useRoute();
 const router = useRouter();
@@ -127,6 +210,14 @@ const asset_record = ref<AssetInstance | null>(null);
 const usage_hours = ref(0);
 const update_notes = ref('');
 const status_value = ref('');
+const maintenance_records = ref<MaintenanceRecord[]>([]);
+const is_loading_maintenance = ref(false);
+const is_saving_maintenance = ref(false);
+const maintenance_form = ref({
+  service_date: new Date().toISOString().slice(0, 10),
+  status: 'maintenance',
+  notes: '',
+});
 
 const status_options = [
   { label: $t('asset_detail.status_on_site'), value: 'on_site' },
@@ -185,12 +276,81 @@ async function loadAssetDetail() {
     const response = await asset_store.fetchAssetById(asset_id.value);
     asset_record.value = response.asset;
     syncFormState();
+    await loadMaintenanceRecords();
   } catch (error) {
     console.error(error);
     asset_record.value = null;
     $q.notify({ type: 'negative', message: $t('asset_detail.failed_load_asset') });
   } finally {
     is_loading.value = false;
+  }
+}
+
+async function loadMaintenanceRecords() {
+  if (!asset_id.value) {
+    maintenance_records.value = [];
+    return;
+  }
+
+  is_loading_maintenance.value = true;
+
+  try {
+    const response = await asset_store.fetchMaintenanceRecords(asset_id.value);
+    maintenance_records.value = response.maintenance_records;
+  } catch (error) {
+    console.error(error);
+    maintenance_records.value = [];
+    $q.notify({ type: 'negative', message: $t('asset_detail.failed_load_maintenance') });
+  } finally {
+    is_loading_maintenance.value = false;
+  }
+}
+
+function formatServiceDate(service_date?: string | null) {
+  if (!service_date) {
+    return '-';
+  }
+
+  const parsed_date = new Date(service_date);
+  if (Number.isNaN(parsed_date.getTime())) {
+    return service_date;
+  }
+
+  return parsed_date.toLocaleDateString();
+}
+
+async function saveMaintenanceRecord() {
+  if (!asset_id.value) {
+    return;
+  }
+
+  if (!maintenance_form.value.service_date || !maintenance_form.value.status) {
+    $q.notify({ type: 'warning', message: $t('errors.field_required') });
+    return;
+  }
+
+  is_saving_maintenance.value = true;
+
+  try {
+    await asset_store.createMaintenanceRecord({
+      asset_id: asset_id.value,
+      service_date: maintenance_form.value.service_date,
+      status: maintenance_form.value.status,
+      notes: maintenance_form.value.notes,
+    });
+
+    maintenance_form.value.notes = '';
+    maintenance_form.value.status = 'maintenance';
+    maintenance_form.value.service_date = new Date().toISOString().slice(0, 10);
+
+    await loadMaintenanceRecords();
+
+    $q.notify({ type: 'positive', message: $t('asset_detail.maintenance_saved') });
+  } catch (error) {
+    console.error(error);
+    $q.notify({ type: 'negative', message: $t('asset_detail.failed_save_maintenance') });
+  } finally {
+    is_saving_maintenance.value = false;
   }
 }
 

@@ -11,7 +11,7 @@ export interface OfflineUsageLog {
   runtime_hours: number;
   supervisor_id: string;
   timestamp: string;
-  sync_status: 'pending' | 'synced' | 'failed';
+  sync_status: 'pending' | 'synced';
 }
 
 const database_name = 'fluxflow_offline_logs';
@@ -97,7 +97,7 @@ export async function initDatabase() {
         runtime_hours REAL NOT NULL,
         supervisor_id TEXT NOT NULL,
         timestamp TEXT NOT NULL,
-        sync_status TEXT NOT NULL CHECK(sync_status IN ('pending', 'synced', 'failed'))
+        sync_status TEXT NOT NULL CHECK(sync_status IN ('pending', 'synced'))
       );
     `);
   } catch (error) {
@@ -167,6 +167,28 @@ export async function updateLocalLogStatus(
       WHERE local_id = ?;
     `,
     [sync_status, local_id],
+  );
+
+  return { success: true };
+}
+
+export async function markAsSynced(local_ids: number[]) {
+  await initDatabase();
+
+  if (is_unavailable || local_ids.length === 0) {
+    return { success: true };
+  }
+
+  const connection = await getDbConnection();
+  const placeholders = local_ids.map(() => '?').join(', ');
+
+  await connection.run(
+    `
+      UPDATE ${table_name}
+      SET sync_status = 'synced'
+      WHERE local_id IN (${placeholders});
+    `,
+    local_ids,
   );
 
   return { success: true };

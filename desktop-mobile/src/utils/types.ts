@@ -75,6 +75,17 @@ export interface AuditLog {
   hours_used_increment: number;
 }
 
+export interface MaintenanceRecord {
+  id: string;
+  asset_id?: string | null;
+  service_date?: string | null;
+  status?: string | null;
+  technician_notes?: string | null;
+  assetId?: string;
+  serviceDate?: string;
+  technicianNotes?: string;
+}
+
 export interface ScannedAssetData extends AssetInstance {
   type?: AssetType;
   site?: Site;

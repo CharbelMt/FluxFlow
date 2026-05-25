@@ -1,4 +1,5 @@
-import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { Network, type ConnectionStatus } from '@capacitor/network';
 import { api } from 'boot/axios';
 import { Notify } from 'quasar';
 import {
@@ -6,7 +7,7 @@ import {
   getPendingLogs,
   initDatabase,
   saveLocalLog,
-  updateLocalLogStatus,
+  markAsSynced,
 } from './database_service';
 
 export interface UsageLogSubmission {
@@ -30,32 +31,14 @@ type SyncablePendingLog = {
   local_id?: number;
   asset_id: string;
   runtime_hours: number;
-  supervisor_id: string;
   timestamp: string;
-  sync_status: 'pending' | 'synced' | 'failed';
-  update_notes?: string;
-  status?: string;
+  sync_status: 'pending' | 'synced';
 };
 
-let network_listener: PluginListenerHandle | null = null;
+let network_listener: { remove: () => Promise<void> } | null = null;
 let sync_in_progress = false;
 let engine_initialized = false;
 let network_warning_logged = false;
-
-type ConnectionStatus = {
-  connected: boolean;
-  connectionType?: string;
-};
-
-type NetworkPlugin = {
-  getStatus: () => Promise<ConnectionStatus>;
-  addListener: (
-    eventName: 'networkStatusChange',
-    listenerFunc: (status: ConnectionStatus) => void,
-  ) => Promise<PluginListenerHandle>;
-};
-
-const Network = registerPlugin<NetworkPlugin>('Network');
 
 function logNetworkFallbackOnce(error: unknown) {
   if (network_warning_logged) {
@@ -165,7 +148,7 @@ export async function submitUsageLog(log_data: UsageLogSubmission): Promise<Usag
 
     if (local_id !== null) {
       try {
-        await updateLocalLogStatus(local_id, 'synced');
+        await markAsSynced([local_id]);
       } catch (error) {
         console.error('Failed to mark local usage log as synced.', error);
         await deleteLocalLog(local_id);
@@ -198,7 +181,7 @@ export async function submitUsageLog(log_data: UsageLogSubmission): Promise<Usag
 
     if (isValidationFailure(error)) {
       if (local_id !== null) {
-        await updateLocalLogStatus(local_id, 'failed');
+        await deleteLocalLog(local_id);
       }
 
       Notify.create({
@@ -242,7 +225,7 @@ export async function syncPendingLogs() {
   sync_in_progress = true;
 
   let synced_count = 0;
-  let failed_count = 0;
+  let failed_count;
 
   try {
     const network_status = await getConnectionStatusSafe();
@@ -255,42 +238,40 @@ export async function syncPendingLogs() {
       };
     }
 
-    for (const pending_log of pending_logs) {
-      try {
-        await api.post(`/assets/${pending_log.asset_id}/usage`, {
-          asset_id: pending_log.asset_id,
-          runtime_hours: pending_log.runtime_hours,
-          update_notes: pending_log.update_notes || '',
-          status: pending_log.status || 'on_site',
-          supervisor_id: pending_log.supervisor_id,
-          timestamp: pending_log.timestamp,
-        });
+    const response = await api.post(
+      '/usage/batch',
+      pending_logs.map((pending_log) => ({
+        local_id: pending_log.local_id,
+        asset_id: pending_log.asset_id,
+        runtime_hours: pending_log.runtime_hours,
+        timestamp: pending_log.timestamp,
+      })),
+    );
 
-        if (pending_log.local_id !== undefined && pending_log.local_id !== null) {
-          try {
-            await updateLocalLogStatus(pending_log.local_id, 'synced');
-          } catch (error) {
-            console.error('Failed to mark synced log locally, deleting row instead.', error);
-            await deleteLocalLog(pending_log.local_id);
-          }
-        }
+    const status_items = response.data as Array<{
+      localId?: number | null;
+      success?: boolean;
+      reason?: string | null;
+    }>;
 
-        synced_count += 1;
-      } catch (error) {
-        if (isNetworkFailure(error)) {
-          break;
-        }
+    const synced_local_ids = status_items
+      .filter((item) => item.success && typeof item.localId === 'number')
+      .map((item) => item.localId as number);
 
-        if (isValidationFailure(error)) {
-          if (pending_log.local_id !== undefined && pending_log.local_id !== null) {
-            await updateLocalLogStatus(pending_log.local_id, 'failed');
-          }
-
-          failed_count += 1;
-          continue;
-        }
-      }
+    if (synced_local_ids.length > 0) {
+      await markAsSynced(synced_local_ids);
+      synced_count = synced_local_ids.length;
     }
+
+    const failed_local_ids = status_items
+      .filter((item) => !item.success && typeof item.localId === 'number')
+      .map((item) => item.localId as number);
+
+    for (const local_id of failed_local_ids) {
+      await deleteLocalLog(local_id);
+    }
+
+    failed_count = failed_local_ids.length;
 
     if (synced_count > 0) {
       Notify.create({

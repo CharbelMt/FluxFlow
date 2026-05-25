@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { submitUsageLog, syncPendingLogs } from 'src/services/usage_service';
-import type { AssetInstance, AssetType, Site } from 'src/utils/types';
+import type { AssetInstance, AssetType, MaintenanceRecord, Site } from 'src/utils/types';
 
 export interface AssetWithDetails extends AssetInstance {
   type: AssetType;
@@ -22,6 +22,13 @@ export interface SaveAssetUpdatePayload {
   usage_hours: number;
   update_notes: string;
   status: string;
+}
+
+export interface CreateMaintenanceRecordPayload {
+  asset_id: string;
+  service_date: string;
+  status: string;
+  notes: string;
 }
 
 const pending_updates_storage_key = 'fluxflow_pending_asset_updates';
@@ -71,6 +78,27 @@ export const useAssetStore = defineStore('assets', {
     async fetchAssetById(asset_id: string) {
       const response = await api.get(`/assets/${asset_id}`);
       return response.data as { success: true; asset: AssetWithDetails };
+    },
+
+    async fetchMaintenanceRecords(asset_id: string) {
+      const response = await api.get(`/assets/${asset_id}/maintenance`);
+      return response.data as {
+        success: true;
+        maintenance_records: MaintenanceRecord[];
+      };
+    },
+
+    async createMaintenanceRecord(payload: CreateMaintenanceRecordPayload) {
+      const response = await api.post(`/assets/${payload.asset_id}/maintenance`, {
+        service_date: payload.service_date,
+        status: payload.status,
+        notes: payload.notes,
+      });
+
+      return response.data as {
+        success: true;
+        maintenance_record: MaintenanceRecord;
+      };
     },
 
     async saveAssetUpdate(update_data: SaveAssetUpdatePayload) {

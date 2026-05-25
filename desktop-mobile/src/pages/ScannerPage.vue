@@ -78,7 +78,8 @@
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { BarcodeScanner } from '@capacitor-community/barcode-scanner';
+import { Capacitor } from '@capacitor/core';
+import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
@@ -96,6 +97,9 @@ const { t } = useI18n();
 const recent_scans = ref<RecentScan[]>([]);
 const is_scanning = ref(false);
 const scan_status = ref('');
+let active_scan_resolve: ((value: string | null) => void) | null = null;
+let active_scan_reject: ((reason: unknown) => void) | null = null;
+let active_scan_finished = false;
 
 const MAX_RECENT_SCANS = 5;
 
@@ -111,7 +115,7 @@ onBeforeUnmount(() => {
 });
 
 function getPlatformName() {
-  return (window as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.();
+  return Capacitor.getPlatform();
 }
 
 function extractAssetId(raw_qr_data: string) {
@@ -163,7 +167,17 @@ async function goToAssetDetail(asset_id: string) {
 }
 
 async function stopNativeScan() {
+  await finishNativeScan(null);
+}
+
+async function cleanupNativeScan() {
   document.body.classList.remove('barcode-scanner-active');
+
+  try {
+    await BarcodeScanner.removeAllListeners();
+  } catch {
+    // no-op: listeners can already be removed
+  }
 
   try {
     await BarcodeScanner.stopScan();
@@ -172,6 +186,29 @@ async function stopNativeScan() {
   }
 
   is_scanning.value = false;
+  active_scan_resolve = null;
+  active_scan_reject = null;
+  active_scan_finished = false;
+}
+
+async function finishNativeScan(scanned_value: string | null) {
+  if (active_scan_finished) {
+    return;
+  }
+
+  active_scan_finished = true;
+  active_scan_resolve?.(scanned_value);
+  await cleanupNativeScan();
+}
+
+async function failNativeScan(error: unknown) {
+  if (active_scan_finished) {
+    return;
+  }
+
+  active_scan_finished = true;
+  active_scan_reject?.(error);
+  await cleanupNativeScan();
 }
 
 async function startNativeScan() {
@@ -182,15 +219,26 @@ async function startNativeScan() {
   scan_status.value = '';
   try {
     const platform_name = getPlatformName();
-    if (platform_name === 'android') {
-      const permissions_before = await BarcodeScanner.checkPermission({ force: true });
-      if (!permissions_before.granted) {
-        const permissions_after = await BarcodeScanner.checkPermission({ force: true });
-        if (!permissions_after.granted) {
-          scan_status.value = t('scanner.camera_permission_required');
-          $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-          return;
-        }
+    if (platform_name === 'web') {
+      scan_status.value = t('scanner.native_not_supported');
+      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+      return;
+    }
+
+    const supported = await BarcodeScanner.isSupported();
+    if (!supported.supported) {
+      scan_status.value = t('scanner.native_not_supported');
+      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+      return;
+    }
+
+    const permissions_before = await BarcodeScanner.checkPermissions();
+    if (permissions_before.camera !== 'granted') {
+      const permissions_after = await BarcodeScanner.requestPermissions();
+      if (permissions_after.camera !== 'granted') {
+        scan_status.value = t('scanner.camera_permission_required');
+        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
+        return;
       }
     }
 
@@ -200,9 +248,30 @@ async function startNativeScan() {
     document.body.classList.add('barcode-scanner-active');
 
     try {
-      // Community plugin: startScan returns a result when a barcode is found or the scan is cancelled
-      const result = await BarcodeScanner.startScan();
-      const raw_qr_data = result.hasContent ? result.content : '';
+      const scan_result_promise = new Promise<string | null>((resolve, reject) => {
+        active_scan_resolve = resolve;
+        active_scan_reject = reject;
+        active_scan_finished = false;
+      });
+
+      await BarcodeScanner.addListener('barcodesScanned', (event) => {
+        const scanned_barcode = event.barcodes[0];
+        const scanned_value =
+          scanned_barcode?.rawValue?.trim() || scanned_barcode?.displayValue?.trim() || '';
+        void finishNativeScan(scanned_value || null);
+      });
+
+      await BarcodeScanner.addListener('scanError', (event) => {
+        void failNativeScan(new Error(event.message));
+      });
+
+      try {
+        await BarcodeScanner.startScan();
+      } catch (error) {
+        void failNativeScan(error);
+      }
+
+      const raw_qr_data = await scan_result_promise;
 
       if (!raw_qr_data) {
         scan_status.value = t('scanner.scan_canceled');

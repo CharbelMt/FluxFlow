@@ -105,10 +105,10 @@
     <q-footer v-if="$q.screen.xs" class="bg-white/90 backdrop-blur-lg border-t border-slate-200">
       <q-tabs
         no-caps
-        align="left"
+        align="justify"
         active-color="white"
         indicator-color="cyan-700"
-        class="mobile-tabs text-slate-400 q-pb-safe"
+        class="mobile-tabs text-slate-400 q-pb-safe full-width"
       >
         <q-route-tab
           v-for="tab in tabs"
@@ -220,9 +220,10 @@ async function handleLogout() {
 }
 
 .mobile-tab {
+  flex: 1 1 0;
   border-radius: 10px;
-  margin: 6px 4px;
-  min-width: 92px;
+  margin: 6px 2px;
+  min-width: 0;
 }
 
 .mobile-tab.q-router-link--exact-active {
@@ -231,7 +232,7 @@ async function handleLogout() {
 }
 
 .mobile-tabs {
-  overflow-x: auto;
+  width: 100%;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
 }
@@ -241,13 +242,11 @@ async function handleLogout() {
 }
 
 .mobile-tabs :deep(.q-tabs__content) {
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  min-width: max-content;
+  width: 100%;
 }
 
 .mobile-tabs :deep(.q-tab) {
-  flex: 0 0 auto;
+  flex: 1 1 0;
 }
 
 /* Smooth Navigation */
