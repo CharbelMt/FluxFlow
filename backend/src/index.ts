@@ -687,10 +687,10 @@ const app = new Elysia()
 			)
 
 			.get(
-				"/:id/maintenance",
+				"/:asset_id/maintenance",
 				async ({ params, set }) => {
 					const fetched_asset = await db.query.assetInstances.findFirst({
-						where: eq(schema.assetInstances.id, params.id),
+						where: eq(schema.assetInstances.id, params.asset_id),
 						columns: { id: true },
 					});
 
@@ -701,7 +701,7 @@ const app = new Elysia()
 
 					const maintenance_records =
 						await db.query.maintenanceRecords.findMany({
-							where: eq(schema.maintenanceRecords.assetId, params.id),
+							where: eq(schema.maintenanceRecords.assetId, params.asset_id),
 							orderBy: [desc(schema.maintenanceRecords.serviceDate)],
 						});
 
@@ -709,16 +709,16 @@ const app = new Elysia()
 				},
 				{
 					params: t.Object({
-						id: t.String(),
+						asset_id: t.String(),
 					}),
 				},
 			)
 
 			.post(
-				"/:id/maintenance",
+				"/:asset_id/maintenance",
 				async ({ params, body, set }) => {
 					const fetched_asset = await db.query.assetInstances.findFirst({
-						where: eq(schema.assetInstances.id, params.id),
+						where: eq(schema.assetInstances.id, params.asset_id),
 						columns: { id: true },
 					});
 
@@ -731,7 +731,7 @@ const app = new Elysia()
 						const [maintenance_record] = await db
 							.insert(schema.maintenanceRecords)
 							.values({
-								assetId: params.id,
+								assetId: params.asset_id,
 								serviceDate: body.service_date,
 								status: body.status,
 								technicianNotes: body.notes || null,
@@ -749,7 +749,7 @@ const app = new Elysia()
 				},
 				{
 					params: t.Object({
-						id: t.String(),
+						asset_id: t.String(),
 					}),
 					body: t.Object({
 						service_date: t.String(),
