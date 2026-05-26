@@ -1204,34 +1204,33 @@ const app = new Elysia()
 			return { error: "Forbidden: manager access required." };
 		}
 
-		const [managed_sites, available_supervisors] = await Promise.all([
-			db.query.sites.findMany({
-				where: eq(schema.sites.managerId, params.manager_id),
-				with: {
-					supervisors: {
-						with: {
-							supervisor: {
-								columns: {
-									id: true,
-									fullName: true,
-									email: true,
-									role: true,
-								},
+		const managed_sites = await db.query.sites.findMany({
+			where: eq(schema.sites.managerId, params.manager_id),
+			with: {
+				supervisors: {
+					with: {
+						supervisor: {
+							columns: {
+								id: true,
+								fullName: true,
+								email: true,
+								role: true,
 							},
 						},
 					},
 				},
-			}),
-			db.query.users.findMany({
-				where: eq(schema.users.role, "supervisor"),
-				columns: {
-					id: true,
-					fullName: true,
-					email: true,
-					role: true,
-				},
-			}),
-		]);
+			},
+		});
+
+		const available_supervisors = await db.query.users.findMany({
+			where: eq(schema.users.role, "supervisor"),
+			columns: {
+				id: true,
+				fullName: true,
+				email: true,
+				role: true,
+			},
+		});
 
 		return {
 			success: true,
