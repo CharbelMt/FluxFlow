@@ -59,6 +59,7 @@ import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useQuasar } from 'quasar';
 import type { QTableColumn } from 'quasar';
+import type { AssetType } from 'src/utils/types';
 import AssetModelFormDialog from 'components/AssetModelFormDialog.vue';
 import { useDialog } from 'src/composables/useDialog';
 
@@ -113,7 +114,7 @@ function openAddModelDialog() {
   });
 }
 
-function editModel(model_data: any) {
+function editModel(model_data: AssetType) {
   pushDialog(AssetModelFormDialog, {
     mode: 'edit',
     model: model_data,
@@ -123,7 +124,7 @@ function editModel(model_data: any) {
   });
 }
 
-function deleteModel(model_data: any) {
+function deleteModel(model_data: AssetType) {
   $q.dialog({
     title: $t('assets.delete_model'),
     message: $t('dialogs.delete_model_message', { modelName: model_data.modelName }),
@@ -139,8 +140,20 @@ function deleteModel(model_data: any) {
       try {
         await asset_store.deleteAssetType(model_data.id);
         $q.notify({ color: 'positive', message: $t('assets.model_deleted') });
-      } catch (err: any) {
-        const error_message = err?.response?.data?.error || $t('errors.delete_asset_failed');
+      } catch (err: unknown) {
+        const error_message =
+          typeof err === 'object' &&
+          err !== null &&
+          'response' in err &&
+          typeof err.response === 'object' &&
+          err.response !== null &&
+          'data' in err.response &&
+          typeof err.response.data === 'object' &&
+          err.response.data !== null &&
+          'error' in err.response.data &&
+          typeof err.response.data.error === 'string'
+            ? err.response.data.error
+            : $t('errors.delete_asset_failed');
         $q.notify({ color: 'negative', message: error_message });
       }
     })();
