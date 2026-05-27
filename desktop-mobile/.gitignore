@@ -1,6 +1,6 @@
 .DS_Store
 .thumbs.db
-node_modules
+/node_modules/
 
 # Quasar core related directories
 .quasar
@@ -31,3 +31,7 @@ yarn-error.log*
 
 # local .env files
 .env.local*
+.env
+.env.*
+
+/android/
