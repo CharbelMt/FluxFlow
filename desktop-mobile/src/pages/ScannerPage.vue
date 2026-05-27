@@ -173,17 +173,9 @@ async function stopNativeScan() {
 async function cleanupNativeScan() {
   document.body.classList.remove('barcode-scanner-active');
 
-  try {
-    await BarcodeScanner.removeAllListeners();
-  } catch {
-    // no-op: listeners can already be removed
-  }
+  await BarcodeScanner.removeAllListeners();
 
-  try {
-    await BarcodeScanner.stopScan();
-  } catch {
-    // no-op: scanner can already be stopped
-  }
+  await BarcodeScanner.stopScan();
 
   is_scanning.value = false;
   active_scan_resolve = null;
@@ -256,8 +248,7 @@ async function startNativeScan() {
 
       await BarcodeScanner.addListener('barcodesScanned', (event) => {
         const scanned_barcode = event.barcodes[0];
-        const scanned_value =
-          scanned_barcode?.rawValue?.trim() || scanned_barcode?.displayValue?.trim() || '';
+        const scanned_value = scanned_barcode?.rawValue?.trim() || '';
         void finishNativeScan(scanned_value || null);
       });
 
