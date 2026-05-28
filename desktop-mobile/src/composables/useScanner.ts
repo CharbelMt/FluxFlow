@@ -76,10 +76,13 @@ export const useScanner = () => {
   const scanned_item = ref<ScannedItem | null>(null);
   const is_loading = ref(false);
   const error_message = ref<string | null>(null);
+  const is_camera_on = ref(false);
 
   const is_asset = computed(() => scanned_item.value?.type === 'asset');
   const is_room = computed(() => scanned_item.value?.type === 'room');
   const has_error = computed(() => error_message.value !== null);
+
+  let active_scan_finished = false;
 
   const processScanUuid = async (uuid: string) => {
     is_loading.value = true;
@@ -159,6 +162,42 @@ export const useScanner = () => {
     error_message.value = null;
   };
 
+  // Handler for vue-qrcode-reader `@detect` event
+  const onDetect = async (results: Array<any>): Promise<string | null> => {
+    if (active_scan_finished) return null;
+    active_scan_finished = true;
+
+    const first = results?.[0];
+    const raw = (first?.rawValue ?? first?.displayValue ?? '') as string;
+    const trimmed = raw.trim();
+
+    if (!trimmed) {
+      error_message.value = 'Scanned data is empty';
+      $q.notify({ type: 'negative', message: error_message.value, position: 'top' });
+      // allow scanning again shortly
+      setTimeout(() => (active_scan_finished = false), 1000);
+      return null;
+    }
+
+    // Kick off background fetch of the scanned value (do not await)
+    void processScanUuid(trimmed);
+
+    // Short debounce to avoid duplicate detections
+    setTimeout(() => (active_scan_finished = false), 1500);
+
+    return trimmed;
+  };
+
+  const onError = (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    error_message.value = message;
+    $q.notify({ type: 'negative', message: message || 'Camera error', position: 'top' });
+  };
+
+  const onCameraOn = () => {
+    is_camera_on.value = true;
+  };
+
   return {
     scanned_item,
     is_loading,
@@ -168,5 +207,10 @@ export const useScanner = () => {
     has_error,
     processScanUuid,
     clearScannedItem,
+    // new handlers for vue-qrcode-reader
+    onDetect,
+    onError,
+    onCameraOn,
+    is_camera_on,
   };
 };

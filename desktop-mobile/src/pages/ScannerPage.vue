@@ -57,6 +57,13 @@
     </q-card>
 
     <div v-if="is_scanning" class="scan-overlay">
+      <QrcodeStream
+        :constraints="{ facingMode: 'environment' }"
+        :formats="['qr_code']"
+        @detect="handleDetect"
+        @error="scannerOnError"
+        @camera-on="cameraOn"
+      />
       <q-card class="scan-overlay-card">
         <q-card-section class="row items-center no-wrap q-pa-sm">
           <q-icon name="camera_alt" color="white" class="q-mr-sm" />
@@ -77,12 +84,12 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
-import { Capacitor } from '@capacitor/core';
-import { BarcodeScanner } from '@capacitor-mlkit/barcode-scanning';
+import { onMounted, ref } from 'vue';
+import { QrcodeStream } from 'vue-qrcode-reader';
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { useScanner } from '../composables/useScanner';
 
 interface RecentScan {
   asset_id: string;
@@ -94,12 +101,15 @@ const router_instance = useRouter();
 const $q = useQuasar();
 const { t } = useI18n();
 
+const {
+  onDetect: scannerOnDetect,
+  onError: scannerOnError,
+  onCameraOn: scannerOnCameraOn,
+} = useScanner();
+
 const recent_scans = ref<RecentScan[]>([]);
 const is_scanning = ref(false);
 const scan_status = ref('');
-let active_scan_resolve: ((value: string | null) => void) | null = null;
-let active_scan_reject: ((reason: unknown) => void) | null = null;
-let active_scan_finished = false;
 
 const MAX_RECENT_SCANS = 5;
 
@@ -109,14 +119,6 @@ onMounted(() => {
     recent_scans.value = JSON.parse(stored_scans_raw) as RecentScan[];
   }
 });
-
-onBeforeUnmount(() => {
-  void stopNativeScan();
-});
-
-function getPlatformName() {
-  return Capacitor.getPlatform();
-}
 
 function extractAssetId(raw_qr_data: string) {
   const qr_payload = raw_qr_data.trim();
@@ -166,150 +168,41 @@ async function goToAssetDetail(asset_id: string) {
   });
 }
 
-async function stopNativeScan() {
-  await finishNativeScan(null);
+function startNativeScan() {
+  if (is_scanning.value) return;
+  is_scanning.value = true;
+  scan_status.value = t('scanner.scanning_prompt');
+  document.body.classList.add('barcode-scanner-active');
 }
 
-async function cleanupNativeScan() {
-  document.body.classList.remove('barcode-scanner-active');
+async function handleDetect(results: Array<{ rawValue: string }>) {
+  const raw_qr_data = await scannerOnDetect(results);
+  if (!raw_qr_data) return;
 
-  await BarcodeScanner.removeAllListeners();
-
-  await BarcodeScanner.stopScan();
-
-  is_scanning.value = false;
-  active_scan_resolve = null;
-  active_scan_reject = null;
-  active_scan_finished = false;
-}
-
-async function finishNativeScan(scanned_value: string | null) {
-  if (active_scan_finished) {
-    return;
-  }
-
-  active_scan_finished = true;
-  active_scan_resolve?.(scanned_value);
-  await cleanupNativeScan();
-}
-
-async function failNativeScan(error: unknown) {
-  if (active_scan_finished) {
-    return;
-  }
-
-  active_scan_finished = true;
-  active_scan_reject?.(error);
-  await cleanupNativeScan();
-}
-
-async function startNativeScan() {
-  if (is_scanning.value) {
-    return;
-  }
-
-  scan_status.value = '';
-  try {
-    const platform_name = getPlatformName();
-    if (platform_name === 'web') {
-      scan_status.value = t('scanner.native_not_supported');
-      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-      return;
-    }
-
-    const supported = await BarcodeScanner.isSupported();
-    if (!supported.supported) {
-      scan_status.value = t('scanner.native_not_supported');
-      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-      return;
-    }
-
-    const permissions_before = await BarcodeScanner.checkPermissions();
-    if (permissions_before.camera !== 'granted') {
-      const permissions_after = await BarcodeScanner.requestPermissions();
-      if (permissions_after.camera !== 'granted') {
-        scan_status.value = t('scanner.camera_permission_required');
-        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-        return;
-      }
-    }
-
-    is_scanning.value = true;
-    scan_status.value = t('scanner.scanning_prompt');
-
-    document.body.classList.add('barcode-scanner-active');
-
-    try {
-      const scan_result_promise = new Promise<string | null>((resolve, reject) => {
-        active_scan_resolve = resolve;
-        active_scan_reject = reject;
-        active_scan_finished = false;
-      });
-
-      await BarcodeScanner.addListener('barcodesScanned', (event) => {
-        const scanned_barcode = event.barcodes[0];
-        const scanned_value = scanned_barcode?.rawValue?.trim() || '';
-        void finishNativeScan(scanned_value || null);
-      });
-
-      await BarcodeScanner.addListener('scanError', (event) => {
-        void failNativeScan(new Error(event.message));
-      });
-
-      try {
-        await BarcodeScanner.startScan();
-      } catch (error) {
-        void failNativeScan(error);
-      }
-
-      const raw_qr_data = await scan_result_promise;
-
-      if (!raw_qr_data) {
-        scan_status.value = t('scanner.scan_canceled');
-        $q.notify({ type: 'info', message: scan_status.value, position: 'top' });
-        await stopNativeScan();
-        return;
-      }
-
-      const asset_id = extractAssetId(raw_qr_data);
-      if (!asset_id) {
-        scan_status.value = t('scanner.invalid_asset_id');
-        $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-        await stopNativeScan();
-        return;
-      }
-
-      persistRecentScans(asset_id);
-      await stopNativeScan();
-      await goToAssetDetail(asset_id);
-    } catch (error: unknown) {
-      console.error('Unable to start native scan:', error);
-
-      const message =
-        error instanceof Error && /not implemented/i.test(error.message)
-          ? t('scanner.plugin_not_implemented')
-          : t('scanner.unable_to_start');
-
-      scan_status.value = message;
-      $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-      await stopNativeScan();
-    }
-  } catch (err: unknown) {
-    console.error('Barcode scanner initialization failed:', err);
-    const friendly =
-      err instanceof Error && /not implemented/i.test(err.message)
-        ? t('scanner.plugin_not_implemented')
-        : t('scanner.unable_to_start');
-
-    scan_status.value = friendly;
+  const asset_id = extractAssetId(raw_qr_data);
+  if (!asset_id) {
+    scan_status.value = t('scanner.invalid_asset_id');
     $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
-    await stopNativeScan();
+    is_scanning.value = false;
+    document.body.classList.remove('barcode-scanner-active');
+    return;
   }
+
+  persistRecentScans(asset_id);
+  is_scanning.value = false;
+  document.body.classList.remove('barcode-scanner-active');
+  await goToAssetDetail(asset_id);
 }
 
-async function cancelNativeScan() {
+function cameraOn() {
+  scan_status.value = '';
+  scannerOnCameraOn();
+}
+
+function cancelNativeScan() {
   scan_status.value = t('scanner.scan_canceled');
-  await stopNativeScan();
+  is_scanning.value = false;
+  document.body.classList.remove('barcode-scanner-active');
 }
 
 const formatTime = (timestamp: number) => {
