@@ -1,5 +1,9 @@
 {
   "appId": "com.fluxflow.app",
   "appName": "FluxFlow",
-  "webDir": "www"
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  }
 }

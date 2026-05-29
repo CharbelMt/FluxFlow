@@ -2,5 +2,9 @@
   "appId": "com.fluxflow.app",
   "appName": "FluxFlow",
   "webDir": "src-capacitor/www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  }
 }

@@ -97,8 +97,18 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
-      // https: true,
+      https: true,
       open: true, // opens browser window automatically
+      proxy: {
+        // Proxy '/api/*' to the backend running on localhost:3000 to avoid mixed-content
+        // The proxy will strip the '/api' prefix before forwarding to the backend.
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+        },
+      },
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework

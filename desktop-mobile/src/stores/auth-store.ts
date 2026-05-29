@@ -36,8 +36,19 @@ export const useAuthStore = defineStore('auth', {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           return true;
         }
-      } catch (e) {
-        console.error(e);
+      } catch (e: unknown) {
+        // Improved logging so we can see backend error details (status / body)
+        const err = e as { response?: { status?: number; data?: unknown }; message?: string };
+        const status = err.response?.status ?? null;
+        const data = err.response?.data ?? null;
+        const message = err.message ?? String(e);
+        console.error(
+          'Login error',
+          `status=${status}`,
+          data ? JSON.stringify(data) : 'no-body',
+          message,
+        );
+
         return false;
       }
     },

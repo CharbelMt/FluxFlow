@@ -1,6 +1,6 @@
 import { defineBoot } from '#q-app/wrappers';
-import { Capacitor } from '@capacitor/core';
 import axios, { type AxiosInstance } from 'axios';
+import { Capacitor } from '@capacitor/core';
 import { useAuthStore } from 'src/stores/auth-store';
 
 declare module 'vue' {
@@ -11,7 +11,12 @@ declare module 'vue' {
 }
 
 const default_base_url =
-  Capacitor.getPlatform() === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== 'undefined' && window.location?.protocol?.startsWith('http')
+    ? '/api'
+    : Capacitor.getPlatform() === 'android'
+      ? 'http://10.0.2.2:3000'
+      : 'http://localhost:3000');
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || default_base_url,
