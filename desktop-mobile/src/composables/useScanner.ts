@@ -162,27 +162,25 @@ export const useScanner = () => {
     error_message.value = null;
   };
 
-  // Handler for vue-qrcode-reader `@detect` event
-  const onDetect = async (results: Array<any>): Promise<string | null> => {
+  const onDetect = (
+    results: Array<{ rawValue?: string; displayValue?: string }>,
+  ): Promise<string> | null | string => {
     if (active_scan_finished) return null;
     active_scan_finished = true;
 
     const first = results?.[0];
-    const raw = (first?.rawValue ?? first?.displayValue ?? '') as string;
+    const raw = first?.rawValue ?? first?.displayValue ?? '';
     const trimmed = raw.trim();
 
     if (!trimmed) {
       error_message.value = 'Scanned data is empty';
       $q.notify({ type: 'negative', message: error_message.value, position: 'top' });
-      // allow scanning again shortly
       setTimeout(() => (active_scan_finished = false), 1000);
       return null;
     }
 
-    // Kick off background fetch of the scanned value (do not await)
     void processScanUuid(trimmed);
 
-    // Short debounce to avoid duplicate detections
     setTimeout(() => (active_scan_finished = false), 1500);
 
     return trimmed;

@@ -1,5 +1,5 @@
 <template>
-  <div class="scanner-page q-pa-md">
+  <div class="scanner-page q-pa-md" :class="{ 'scanner-page--scanning': is_scanning }">
     <q-card class="scanner-card">
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">{{ $t('scanner.title') }}</div>
@@ -12,12 +12,12 @@
         </q-banner>
 
         <q-btn
+          v-if="!is_scanning"
           unelevated
           color="primary"
           class="full-width q-mb-sm"
           icon="qr_code_scanner"
           :label="$t('scanner.scan_button')"
-          :loading="is_scanning"
           @click="startNativeScan"
         />
 
@@ -57,28 +57,34 @@
     </q-card>
 
     <div v-if="is_scanning" class="scan-overlay">
-      <QrcodeStream
-        :constraints="{ facingMode: 'environment' }"
-        :formats="['qr_code']"
-        @detect="handleDetect"
-        @error="scannerOnError"
-        @camera-on="cameraOn"
-      />
-      <q-card class="scan-overlay-card">
-        <q-card-section class="row items-center no-wrap q-pa-sm">
-          <q-icon name="camera_alt" color="white" class="q-mr-sm" />
-          <div class="text-white text-caption">{{ $t('scanner.scanning_progress') }}</div>
-          <q-space />
-          <q-btn
-            flat
-            dense
-            color="white"
-            icon="close"
-            :label="$t('common.cancel')"
-            @click="cancelNativeScan"
+      <div class="scan-overlay-scrim" @click.stop />
+
+      <div class="scan-overlay-content">
+        <div class="camera-container">
+          <QrcodeStream
+            :constraints="{ facingMode: 'environment' }"
+            :formats="['qr_code']"
+            @detect="handleDetect"
+            @error="scannerOnError"
+            @camera-on="cameraOn"
           />
-        </q-card-section>
-      </q-card>
+        </div>
+        <q-card class="scan-overlay-card">
+          <q-card-section class="row items-center no-wrap q-pa-sm">
+            <q-icon name="camera_alt" color="white" class="q-mr-sm" />
+            <div class="text-white text-caption">{{ $t('scanner.scanning_progress') }}</div>
+            <q-space />
+            <q-btn
+              flat
+              dense
+              color="white"
+              icon="close"
+              :label="$t('common.cancel')"
+              @click="cancelNativeScan"
+            />
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
   </div>
 </template>
@@ -237,21 +243,71 @@ const formatTime = (timestamp: number) => {
   }
 }
 
+.scanner-page--scanning {
+  pointer-events: none;
+  user-select: none;
+}
+
+.scanner-page--scanning .scan-overlay,
+.scanner-page--scanning .scan-overlay * {
+  pointer-events: auto;
+}
+
 .scan-overlay {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   z-index: 4000;
-  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scan-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.45);
+}
+
+.scan-overlay-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 72px 12px 12px;
+  box-sizing: border-box;
 }
 
 .scan-overlay-card {
+  width: 100%;
   max-width: 560px;
-  margin: 0 auto;
+  margin: 12px auto 0;
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(4px);
+}
+
+.camera-container {
+  flex: 1 1 auto;
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Ensure the QrcodeStream and underlying video fill the container */
+:deep(QrcodeStream) {
+  flex: 1 1 auto;
+  height: 100%;
+  width: 100%;
+}
+
+:deep(video) {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
 }
 
 @media (min-width: 768px) {
@@ -269,12 +325,21 @@ const formatTime = (timestamp: number) => {
 body.barcode-scanner-active {
   background: transparent !important;
   --q-background: transparent !important;
+  overflow: hidden !important;
 }
 
 body.barcode-scanner-active .q-layout,
 body.barcode-scanner-active .q-page-container,
 body.barcode-scanner-active .scanner-page {
   background: transparent !important;
+}
+
+body.barcode-scanner-active .q-layout > *:not(.q-page-container) {
+  pointer-events: none;
+}
+
+body.barcode-scanner-active .q-layout > .q-page-container {
+  pointer-events: none;
 }
 
 body.barcode-scanner-active .scanner-card {
