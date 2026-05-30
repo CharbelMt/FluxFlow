@@ -1,11 +1,24 @@
 import { Elysia, t } from "elysia";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { jwt } from "@elysiajs/jwt";
 import * as schema from "./db/schema";
 import cors from "@elysiajs/cors";
 import QRCode from "qrcode";
+
+const supervisorEmailDomain = "@fluxflow.com";
+
+function normalizeSupervisorEmail(email: string) {
+	const trimmed_email = email.trim();
+	return trimmed_email.toLowerCase().endsWith(supervisorEmailDomain)
+		? trimmed_email
+		: `${trimmed_email}${supervisorEmailDomain}`;
+}
+
+function isValidMaintenanceInterval(value: number) {
+	return Number.isFinite(value) && value >= 0;
+}
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
@@ -263,6 +276,7 @@ const app = new Elysia()
 		app
 			.get("/", async () => {
 				return await db.query.sites.findMany({
+					orderBy: [asc(schema.sites.createdAt)],
 					with: {
 						storageRooms: true,
 					},
@@ -424,7 +438,6 @@ const app = new Elysia()
 						columns: {
 							id: true,
 							roomLabel: true,
-							roomTagUid: true,
 						},
 					});
 
@@ -479,7 +492,7 @@ const app = new Elysia()
 							.update(schema.storageRooms)
 							.set({
 								roomLabel: body.room_label,
-								roomTagUid: body.room_tag_uid,
+								roomTagUid: existing_room.id,
 							})
 							.where(eq(schema.storageRooms.id, params.room_id))
 							.returning();
@@ -498,7 +511,6 @@ const app = new Elysia()
 					}),
 					body: t.Object({
 						room_label: t.String(),
-						room_tag_uid: t.String(),
 					}),
 				},
 			)
@@ -506,12 +518,15 @@ const app = new Elysia()
 			.post(
 				"/",
 				async ({ body }) => {
+					const room_id = crypto.randomUUID();
+					const room_tag_uid = body.room_tag_uid?.trim() || room_id;
 					const new_room = await db
 						.insert(schema.storageRooms)
 						.values({
+							id: room_id,
 							siteId: body.site_id,
 							roomLabel: body.room_label,
-							roomTagUid: body.room_tag_uid,
+							roomTagUid: room_tag_uid,
 						})
 						.returning();
 
@@ -521,7 +536,7 @@ const app = new Elysia()
 					body: t.Object({
 						site_id: t.String(),
 						room_label: t.String(),
-						room_tag_uid: t.String(),
+						room_tag_uid: t.Optional(t.String()),
 					}),
 				},
 			),
@@ -536,13 +551,17 @@ const app = new Elysia()
 			.post(
 				"/types",
 				async ({ body, set }) => {
+					if (!isValidMaintenanceInterval(body.maintenance_interval_hrs)) {
+						set.status = 400;
+						return { error: "Maintenance interval cannot be negative." };
+					}
+
 					try {
 						const [new_type] = await db
 							.insert(schema.assetTypes)
 							.values({
 								modelName: body.model_name,
 								manufacturer: body.manufacturer,
-								category: body.category,
 								maintenanceIntervalHrs: body.maintenance_interval_hrs,
 							})
 							.returning();
@@ -560,7 +579,7 @@ const app = new Elysia()
 					body: t.Object({
 						model_name: t.String(),
 						manufacturer: t.String(),
-						category: t.String(),
+						category: t.Optional(t.String()),
 						maintenance_interval_hrs: t.Number(),
 					}),
 				},
@@ -578,13 +597,17 @@ const app = new Elysia()
 						return { error: "Asset type not found." };
 					}
 
+					if (!isValidMaintenanceInterval(body.maintenance_interval_hrs)) {
+						set.status = 400;
+						return { error: "Maintenance interval cannot be negative." };
+					}
+
 					try {
 						const [updated_type] = await db
 							.update(schema.assetTypes)
 							.set({
 								modelName: body.model_name,
 								manufacturer: body.manufacturer,
-								category: body.category,
 								maintenanceIntervalHrs: body.maintenance_interval_hrs,
 							})
 							.where(eq(schema.assetTypes.id, params.type_id))
@@ -606,7 +629,7 @@ const app = new Elysia()
 					body: t.Object({
 						model_name: t.String(),
 						manufacturer: t.String(),
-						category: t.String(),
+						category: t.Optional(t.String()),
 						maintenance_interval_hrs: t.Number(),
 					}),
 				},
@@ -942,12 +965,20 @@ const app = new Elysia()
 							let type_id = body.type_id;
 
 							if (!type_id && body.new_type) {
+								if (
+									!isValidMaintenanceInterval(
+										body.new_type.maintenance_interval_hrs,
+									)
+								) {
+									set.status = 400;
+									return { error: "Maintenance interval cannot be negative." };
+								}
+
 								const [new_type] = await tx
 									.insert(schema.assetTypes)
 									.values({
 										modelName: body.new_type.model_name,
 										manufacturer: body.new_type.manufacturer,
-										category: body.new_type.category,
 										maintenanceIntervalHrs:
 											body.new_type.maintenance_interval_hrs,
 									})
@@ -999,7 +1030,7 @@ const app = new Elysia()
 							t.Object({
 								model_name: t.String(),
 								manufacturer: t.String(),
-								category: t.String(),
+								category: t.Optional(t.String()),
 								maintenance_interval_hrs: t.Number(),
 							}),
 						),
@@ -1046,13 +1077,14 @@ const app = new Elysia()
 			}
 
 			const password_hash = await Bun.password.hash(body.password);
+			const normalized_email = normalizeSupervisorEmail(body.email);
 
 			try {
 				const [created_user] = await db
 					.insert(schema.users)
 					.values({
 						fullName: body.full_name,
-						email: body.email,
+						email: normalized_email,
 						passwordHash: password_hash,
 						role: "supervisor",
 					})
@@ -1106,13 +1138,15 @@ const app = new Elysia()
 			}
 
 			try {
+				const normalized_email = normalizeSupervisorEmail(body.email);
+
 				const update_payload: {
 					fullName: string;
 					email: string;
 					passwordHash?: string;
 				} = {
 					fullName: body.full_name,
-					email: body.email,
+					email: normalized_email,
 				};
 
 				if (body.password && body.password.trim().length > 0) {

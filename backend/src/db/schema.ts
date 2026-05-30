@@ -112,7 +112,6 @@ export const assetTypes = pgTable("asset_types", {
 		.notNull(),
 	modelName: varchar("model_name", { length: 255 }).notNull(),
 	manufacturer: varchar({ length: 255 }),
-	category: varchar({ length: 100 }),
 	maintenanceIntervalHrs: integer("maintenance_interval_hrs").default(0),
 });
 

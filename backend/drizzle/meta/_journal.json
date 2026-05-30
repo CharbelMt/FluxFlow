@@ -15,6 +15,13 @@
 			"when": 1780000000000,
 			"tag": "0001_maintenance_status",
 			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1780000000001,
+			"tag": "0002_drop_asset_type_category",
+			"breakpoints": true
 		}
 	]
 }
