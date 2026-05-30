@@ -13,6 +13,8 @@
         outlined
         :label="$t('assets.model_name')"
         class="rounded-lg"
+        :rules="requiredTextRules"
+        hide-bottom-space
       />
 
       <q-input
@@ -20,16 +22,20 @@
         outlined
         :label="$t('assets.manufacturer')"
         class="rounded-lg"
+        :rules="requiredTextRules"
+        hide-bottom-space
       />
-
-      <q-input v-model="form.category" outlined :label="$t('assets.category')" class="rounded-lg" />
 
       <q-input
         v-model.number="form.maintenanceIntervalHrs"
         outlined
         type="number"
+        min="0"
+        step="1"
         :label="$t('assets.maintenance_interval')"
         class="rounded-lg"
+        :rules="maintenanceIntervalRules"
+        hide-bottom-space
       />
 
       <div class="row gap-3 justify-end q-mt-lg">
@@ -46,7 +52,7 @@
           unelevated
           :label="isEditMode ? $t('common.update') : $t('common.save')"
           :loading="submitting"
-          :disable="submitting || !hasChanges"
+          :disable="submitting || !canSubmit"
           @click="saveModel"
           no-caps
           class="rounded-lg q-px-lg"
@@ -66,12 +72,11 @@ interface AssetModelInput {
   id: string;
   modelName?: string;
   manufacturer?: string;
-  category?: string;
   maintenanceIntervalHrs?: number;
 }
 
 interface Props {
-  mode: 'create' | 'edit';
+  mode?: 'create' | 'edit';
   model?: AssetModelInput;
   onDialogOK?: () => void;
   onDialogCancel?: () => void;
@@ -91,14 +96,12 @@ const isEditMode = computed(() => props.mode === 'edit');
 const form = ref({
   modelName: props.model?.modelName || '',
   manufacturer: props.model?.manufacturer || '',
-  category: props.model?.category || '',
-  maintenanceIntervalHrs: props.model?.maintenanceIntervalHrs || 0,
+  maintenanceIntervalHrs: Math.max(0, props.model?.maintenanceIntervalHrs || 0),
 });
 
 const initialForm = {
   modelName: form.value.modelName.trim(),
   manufacturer: form.value.manufacturer.trim(),
-  category: form.value.category.trim(),
   maintenanceIntervalHrs: Number(form.value.maintenanceIntervalHrs) || 0,
 };
 
@@ -106,10 +109,30 @@ const hasChanges = computed(() => {
   return (
     form.value.modelName.trim() !== initialForm.modelName ||
     form.value.manufacturer.trim() !== initialForm.manufacturer ||
-    form.value.category.trim() !== initialForm.category ||
-    (Number(form.value.maintenanceIntervalHrs) || 0) !== initialForm.maintenanceIntervalHrs
+    normalizedMaintenanceIntervalHrs.value !== initialForm.maintenanceIntervalHrs
   );
 });
+
+const hasRequiredFields = computed(() => {
+  return form.value.modelName.trim().length > 0 && form.value.manufacturer.trim().length > 0;
+});
+
+const canSubmit = computed(() => {
+  return hasChanges.value && hasRequiredFields.value;
+});
+
+const normalizedMaintenanceIntervalHrs = computed(() => {
+  const value = Number(form.value.maintenanceIntervalHrs);
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return value;
+});
+
+const requiredTextRules = [(val: string) => !!val.trim() || $t('errors.field_required')];
+
+const maintenanceIntervalRules = [
+  (val: number) => Number.isFinite(Number(val)) || $t('errors.invalid_input'),
+  (val: number) => Number(val) >= 0 || $t('errors.invalid_input'),
+];
 
 const getTitle = computed(() => {
   return isEditMode.value ? $t('assets.edit_model') : $t('assets.add_model');
@@ -120,15 +143,22 @@ function handleClose() {
 }
 
 async function saveModel() {
-  if (!hasChanges.value || submitting.value) return;
+  if (!canSubmit.value || submitting.value) return;
+
+  const modelName = form.value.modelName.trim();
+  const manufacturer = form.value.manufacturer.trim();
+
+  if (!modelName || !manufacturer) {
+    $q.notify({ color: 'negative', message: $t('errors.field_required') });
+    return;
+  }
 
   submitting.value = true;
   try {
     const payload = {
-      model_name: form.value.modelName,
-      manufacturer: form.value.manufacturer,
-      category: form.value.category,
-      maintenance_interval_hrs: form.value.maintenanceIntervalHrs,
+      model_name: modelName,
+      manufacturer,
+      maintenance_interval_hrs: normalizedMaintenanceIntervalHrs.value,
     };
 
     if (isEditMode.value) {

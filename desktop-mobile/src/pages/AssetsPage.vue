@@ -29,6 +29,7 @@
               v-model="filter"
               outlined
               dense
+              clearable
               :placeholder="$t('assets.search_placeholder')"
               class="grow rounded-xl bg-white"
             >

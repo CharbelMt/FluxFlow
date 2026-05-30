@@ -60,11 +60,6 @@
               </div>
 
               <div class="q-mb-md">
-                <div class="text-overline text-grey">{{ $t('scanner_detail.category') }}</div>
-                <div class="text-body2">{{ scanned_item.data.type.category }}</div>
-              </div>
-
-              <div class="q-mb-md">
                 <div class="text-overline text-grey">
                   {{ $t('scanner_detail.maintenance_interval') }}
                 </div>
@@ -94,9 +89,6 @@
               <div class="text-overline text-grey">{{ $t('scanner_detail.current_room') }}</div>
               <div class="text-body2 text-weight-bold">
                 {{ getRoomLabel(scanned_item.data.room) }}
-              </div>
-              <div class="text-caption text-grey">
-                {{ getRoomTagUid(scanned_item.data.room) }}
               </div>
             </div>
           </div>
@@ -137,11 +129,6 @@
                 <div class="text-body2 text-weight-bold">
                   {{ getRoomLabel(scanned_item.data) }}
                 </div>
-              </div>
-
-              <div class="q-mb-md">
-                <div class="text-overline text-grey">{{ $t('scanner_detail.room_tag_uid') }}</div>
-                <div class="text-body2">{{ getRoomTagUid(scanned_item.data) }}</div>
               </div>
             </div>
 
@@ -225,7 +212,6 @@ const getModelName = (assetType?: ScannedAssetData['type']) =>
 const getMaintenanceInterval = (assetType?: ScannedAssetData['type']) =>
   assetType?.maintenanceIntervalHrs || assetType?.maintenance_interval_hrs || 0;
 const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
-const getRoomTagUid = (room: ScannedRoomData) => room.roomTagUid || room.room_tag_uid || '';
 const getStatusLabel = (status: string) => {
   switch (status) {
     case 'on_site':

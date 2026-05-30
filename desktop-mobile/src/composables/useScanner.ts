@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
+import { useI18n } from 'vue-i18n';
 import type { AxiosError } from 'axios';
 
 export interface ScannedAsset {
@@ -23,7 +24,6 @@ export interface ScannedAsset {
       id: string;
       model_name: string;
       manufacturer: string;
-      category: string;
       maintenance_interval_hrs: number;
       modelName?: string;
       maintenanceIntervalHrs?: number;
@@ -39,9 +39,7 @@ export interface ScannedAsset {
       id: string;
       site_id: string;
       room_label: string;
-      room_tag_uid: string;
       roomLabel?: string;
-      roomTagUid?: string;
     };
   };
 }
@@ -52,9 +50,7 @@ export interface ScannedRoom {
     id: string;
     site_id: string;
     room_label: string;
-    room_tag_uid: string;
     roomLabel?: string;
-    roomTagUid?: string;
     site?: {
       id: string;
       name: string;
@@ -73,6 +69,7 @@ interface ApiErrorBody {
 
 export const useScanner = () => {
   const $q = useQuasar();
+  const { t } = useI18n();
   const scanned_item = ref<ScannedItem | null>(null);
   const is_loading = ref(false);
   const error_message = ref<string | null>(null);
@@ -131,22 +128,24 @@ export const useScanner = () => {
         }
       }
 
-      error_message.value = `No asset or room found with UUID: ${uuid}`;
+      error_message.value = t('scanner.no_asset_or_room_found', { uuid });
       $q.notify({
         type: 'negative',
-        message: error_message.value ?? 'Scanned code was not found.',
+        message: error_message.value ?? t('scanner.scanned_code_not_found'),
         position: 'top',
         timeout: 2000,
       });
     } catch (error) {
       const axios_error = error as AxiosError<ApiErrorBody>;
       const error_text =
-        axios_error.response?.data?.error || axios_error.message || 'Failed to scan item';
+        axios_error.response?.data?.error ||
+        axios_error.message ||
+        t('scanner.failed_to_scan_item');
       error_message.value = error_text;
 
       $q.notify({
         type: 'negative',
-        message: error_message.value ?? 'Failed to scan item',
+        message: error_message.value ?? t('scanner.failed_to_scan_item'),
         position: 'top',
         timeout: 2000,
       });
@@ -173,7 +172,7 @@ export const useScanner = () => {
     const trimmed = raw.trim();
 
     if (!trimmed) {
-      error_message.value = 'Scanned data is empty';
+      error_message.value = t('scanner.scanned_data_empty');
       $q.notify({ type: 'negative', message: error_message.value, position: 'top' });
       setTimeout(() => (active_scan_finished = false), 1000);
       return null;
@@ -189,7 +188,7 @@ export const useScanner = () => {
   const onError = (error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     error_message.value = message;
-    $q.notify({ type: 'negative', message: message || 'Camera error', position: 'top' });
+    $q.notify({ type: 'negative', message: message || t('scanner.camera_error'), position: 'top' });
   };
 
   const onCameraOn = () => {

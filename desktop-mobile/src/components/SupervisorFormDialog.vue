@@ -18,7 +18,9 @@
         v-model="form.email"
         :label="$t('forms.supervisor.email')"
         outlined
-        type="email"
+        type="text"
+        inputmode="email"
+        :suffix="isEditMode ? '' : SUPERVISOR_EMAIL_DOMAIN"
         :disable="submitting"
       />
 
@@ -32,6 +34,7 @@
         :disable="submitting"
         :rules="passwordRules"
         autocomplete="new-password"
+        hide-bottom-space
         lazy-rules
       >
         <template #append>
@@ -64,7 +67,7 @@
         "
         class="q-px-xl"
         :loading="submitting"
-        :disable="submitting || !hasChanges"
+        :disable="submitting || !canSubmit"
         @click="handleSubmit"
       />
     </q-card-actions>
@@ -101,6 +104,7 @@ const supervisorStore = useSupervisorStore();
 const submitting = ref(false);
 const isPasswordVisible = ref(false);
 const { t: $t } = useI18n();
+const SUPERVISOR_EMAIL_DOMAIN = '@fluxflow.com';
 
 const isEditMode = computed(
   () => props.componentProps?.mode === 'edit' && !!props.componentProps?.supervisor?.id,
@@ -135,6 +139,27 @@ const hasChanges = computed(() => {
   );
 });
 
+const isPasswordValid = computed(() => {
+  const password = form.value.password.trim();
+
+  if (isEditMode.value && !password) return true;
+
+  return password.length >= 6;
+});
+
+const canSubmit = computed(() => {
+  const fullName = form.value.full_name.trim();
+  const email = form.value.email.trim();
+
+  if (!hasChanges.value || !fullName || !email) return false;
+
+  if (isEditMode.value) {
+    return isPasswordValid.value;
+  }
+
+  return isPasswordValid.value;
+});
+
 const passwordRules = [
   (val: string) => {
     if (isEditMode.value && !val) return true;
@@ -149,7 +174,7 @@ const passwordRules = [
 async function handleSubmit() {
   const managerId = authStore.user?.id as string | undefined;
   const fullName = form.value.full_name.trim();
-  const email = form.value.email.trim();
+  const rawEmail = form.value.email.trim();
   const password = form.value.password.trim();
 
   if (!managerId) {
@@ -157,15 +182,19 @@ async function handleSubmit() {
     return;
   }
 
-  if (!fullName || !email) {
+  if (!fullName || !rawEmail) {
     $q.notify({ color: 'negative', message: $t('errors.name_email_required') });
     return;
   }
 
-  if (!isEditMode.value && !password) {
-    $q.notify({ color: 'negative', message: $t('errors.temp_password_required') });
+  if (!isPasswordValid.value) {
+    $q.notify({ color: 'negative', message: $t('errors.supervisor_password_min') });
     return;
   }
+
+  const email = rawEmail.toLowerCase().endsWith(SUPERVISOR_EMAIL_DOMAIN)
+    ? rawEmail
+    : `${rawEmail}${SUPERVISOR_EMAIL_DOMAIN}`;
 
   submitting.value = true;
   try {

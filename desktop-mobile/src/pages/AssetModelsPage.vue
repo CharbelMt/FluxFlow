@@ -1,60 +1,74 @@
 <template>
-  <q-page class="q-pa-lg">
-    <div class="row items-center justify-between q-mb-lg">
-      <div class="text-xl font-black text-slate-900 tracking-tight">
-        {{ $t('assets.manage_models') }}
+  <q-page class="q-pa-md sm:q-pa-lg">
+    <div class="mx-auto w-full max-w-7xl">
+      <div class="q-mb-md rounded-2xl border border-slate-300 bg-slate-50 p-4 shadow-sm">
+        <div class="flex flex-col gap-3">
+          <div class="row items-center q-gutter-md">
+            <q-input
+              v-model="searchTerm"
+              outlined
+              dense
+              clearable
+              :placeholder="$t('assets.model_search_placeholder')"
+              class="grow rounded-xl bg-white"
+            >
+              <template #prepend>
+                <q-icon name="search" color="primary" />
+              </template>
+            </q-input>
+
+            <q-btn
+              color="primary"
+              icon="add"
+              :label="$t('assets.add_model')"
+              unelevated
+              rounded
+              class="rounded-xl q-px-md font-semibold"
+              @click="openAddModelDialog"
+            />
+          </div>
+        </div>
       </div>
 
-      <!-- Add Model Button -->
-      <q-btn
-        color="primary"
-        icon="add"
-        :label="$t('assets.add_model')"
-        unelevated
-        rounded
-        class="rounded-xl q-px-md font-semibold"
-        @click="openAddModelDialog"
-      />
+      <!-- Models Table -->
+      <q-table
+        :rows="filteredAssetTypes"
+        :columns="table_columns"
+        row-key="id"
+        flat
+        bordered
+        class="overflow-hidden rounded-2xl border-slate-300 bg-slate-50 shadow-md"
+        :pagination="{ rowsPerPage: 10 }"
+      >
+        <template v-slot:body-cell-actions="props">
+          <q-td :props="props" class="text-right">
+            <q-btn
+              flat
+              round
+              dense
+              icon="edit"
+              color="primary"
+              size="sm"
+              @click="editModel(props.row)"
+            />
+            <q-btn
+              flat
+              round
+              dense
+              icon="delete"
+              color="negative"
+              size="sm"
+              @click="deleteModel(props.row)"
+            />
+          </q-td>
+        </template>
+      </q-table>
     </div>
-
-    <!-- Models Table -->
-    <q-table
-      :rows="asset_store.assetTypes"
-      :columns="table_columns"
-      row-key="id"
-      flat
-      bordered
-      class="overflow-hidden rounded-xl border-slate-300 bg-slate-50"
-      :pagination="{ rowsPerPage: 10 }"
-    >
-      <template v-slot:body-cell-actions="props">
-        <q-td :props="props" class="text-right">
-          <q-btn
-            flat
-            round
-            dense
-            icon="edit"
-            color="primary"
-            size="sm"
-            @click="editModel(props.row)"
-          />
-          <q-btn
-            flat
-            round
-            dense
-            icon="delete"
-            color="negative"
-            size="sm"
-            @click="deleteModel(props.row)"
-          />
-        </q-td>
-      </template>
-    </q-table>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useQuasar } from 'quasar';
@@ -67,6 +81,7 @@ const asset_store = useAssetStore();
 const { t: $t } = useI18n();
 const $q = useQuasar();
 const { pushDialog } = useDialog();
+const searchTerm = ref('');
 
 onMounted(() => {
   void asset_store.fetchAssetTypes();
@@ -86,12 +101,6 @@ const table_columns: QTableColumn[] = [
     align: 'left',
   },
   {
-    name: 'category',
-    label: $t('assets.category'),
-    field: 'category',
-    align: 'left',
-  },
-  {
     name: 'maintenanceIntervalHrs',
     label: $t('assets.maintenance_interval'),
     field: 'maintenanceIntervalHrs',
@@ -104,6 +113,18 @@ const table_columns: QTableColumn[] = [
     align: 'right',
   },
 ];
+
+const filteredAssetTypes = computed(() => {
+  const term = (searchTerm.value || '').trim().toLowerCase();
+  if (!term) return asset_store.assetTypes;
+
+  return asset_store.assetTypes.filter((type) => {
+    return (
+      (type.modelName || type.model_name || '').toLowerCase().includes(term) ||
+      (type.manufacturer || '').toLowerCase().includes(term)
+    );
+  });
+});
 
 function openAddModelDialog() {
   pushDialog(AssetModelFormDialog, {

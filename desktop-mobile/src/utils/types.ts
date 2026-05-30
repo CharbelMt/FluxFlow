@@ -28,9 +28,7 @@ export interface StorageRoom {
   site_id?: string | null;
   siteId?: string | null;
   room_label?: string;
-  room_tag_uid?: string;
   roomLabel?: string;
-  roomTagUid?: string;
   site?: Site;
 }
 
@@ -39,7 +37,6 @@ export interface AssetType {
   model_name?: string;
   modelName?: string;
   manufacturer?: string | null;
-  category?: string | null;
   maintenance_interval_hrs?: number | null;
   maintenanceIntervalHrs?: number;
 }

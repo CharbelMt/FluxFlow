@@ -6,6 +6,32 @@ export interface SiteWithRooms extends Site {
   storageRooms: StorageRoom[];
 }
 
+function getSiteCreatedAt(site: SiteWithRooms) {
+  return site.createdAt || site.created_at || '';
+}
+
+function sortSitesByCreatedAt(sites: SiteWithRooms[]) {
+  return [...sites].sort((firstSite, secondSite) => {
+    const firstCreatedAt = getSiteCreatedAt(firstSite);
+    const secondCreatedAt = getSiteCreatedAt(secondSite);
+
+    if (!firstCreatedAt && !secondCreatedAt) {
+      return firstSite.id.localeCompare(secondSite.id);
+    }
+
+    if (!firstCreatedAt) return 1;
+    if (!secondCreatedAt) return -1;
+
+    const timeDifference = new Date(firstCreatedAt).getTime() - new Date(secondCreatedAt).getTime();
+
+    if (timeDifference !== 0) {
+      return timeDifference;
+    }
+
+    return firstSite.id.localeCompare(secondSite.id);
+  });
+}
+
 export const useSiteStore = defineStore('sites', {
   state: () => ({
     sites: [] as SiteWithRooms[],
@@ -26,7 +52,7 @@ export const useSiteStore = defineStore('sites', {
       this.loading = true;
       try {
         const response = await api.get<SiteWithRooms[]>('/sites');
-        this.sites = response.data;
+        this.sites = sortSitesByCreatedAt(response.data);
       } catch (error) {
         console.error('The signal is lost:', error);
       } finally {
@@ -63,7 +89,7 @@ export const useSiteStore = defineStore('sites', {
       }
     },
 
-    async createStorageRoom(siteId: string, payload: { room_label: string; room_tag_uid: string }) {
+    async createStorageRoom(siteId: string, payload: { room_label: string }) {
       try {
         const response = await api.post('/storage-rooms', {
           site_id: siteId,
@@ -79,7 +105,7 @@ export const useSiteStore = defineStore('sites', {
       }
     },
 
-    async updateStorageRoom(roomId: string, payload: { room_label: string; room_tag_uid: string }) {
+    async updateStorageRoom(roomId: string, payload: { room_label: string }) {
       try {
         const response = await api.put(`/storage-rooms/${roomId}`, payload);
         if (response.data.success) {

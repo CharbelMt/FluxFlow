@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Network, type ConnectionStatus } from '@capacitor/network';
 import { api } from 'boot/axios';
+import { i18n } from 'boot/i18n';
 import { Notify } from 'quasar';
 import {
   deleteLocalLog,
@@ -39,6 +40,8 @@ let network_listener: { remove: () => Promise<void> } | null = null;
 let sync_in_progress = false;
 let engine_initialized = false;
 let network_warning_logged = false;
+
+const t = i18n.global.t.bind(i18n.global);
 
 function logNetworkFallbackOnce(error: unknown) {
   if (network_warning_logged) {
@@ -123,7 +126,7 @@ export async function submitUsageLog(log_data: UsageLogSubmission): Promise<Usag
   const timestamp = log_data.timestamp || new Date().toISOString();
 
   if (!supervisor_id) {
-    throw new Error('A supervisor account is required to submit usage logs.');
+    throw new Error(t('errors.supervisor_required_for_usage_logs'));
   }
 
   const local_result = await saveLocalLog({
@@ -165,7 +168,7 @@ export async function submitUsageLog(log_data: UsageLogSubmission): Promise<Usag
     if (isNetworkFailure(error)) {
       Notify.create({
         type: 'warning',
-        message: 'Saved Locally. It will sync when the connection is restored.',
+        message: t('messages.usage_saved_locally'),
         position: 'top',
         timeout: 2500,
       });
@@ -186,7 +189,7 @@ export async function submitUsageLog(log_data: UsageLogSubmission): Promise<Usag
 
       Notify.create({
         type: 'negative',
-        message: 'Usage update was rejected by the server and will not be retried.',
+        message: t('messages.usage_update_rejected'),
         position: 'top',
         timeout: 3000,
       });
@@ -274,9 +277,13 @@ export async function syncPendingLogs() {
     failed_count = failed_local_ids.length;
 
     if (synced_count > 0) {
+      const synced_message =
+        synced_count === 1
+          ? t('messages.pending_usage_log_synced', { count: synced_count })
+          : t('messages.pending_usage_logs_synced', { count: synced_count });
       Notify.create({
         type: 'positive',
-        message: `${synced_count} pending usage log${synced_count === 1 ? '' : 's'} synced.`,
+        message: synced_message,
         position: 'top',
         timeout: 2000,
       });

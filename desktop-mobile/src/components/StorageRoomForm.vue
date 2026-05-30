@@ -19,24 +19,6 @@
         autofocus
         :disable="submitting"
       />
-
-      <q-input
-        v-model="form.room_tag_uid"
-        :label="$t('forms.storage_room.room_tag_uid')"
-        outlined
-        :disable="submitting"
-      >
-        <template #append>
-          <q-btn
-            flat
-            dense
-            no-caps
-            color="primary"
-            :label="$t('forms.storage_room.generate_uid')"
-            @click="generateRoomTagUid"
-          />
-        </template>
-      </q-input>
     </q-card-section>
 
     <q-card-actions align="right" class="q-pa-lg">
@@ -81,8 +63,6 @@ const props = defineProps<{
       id: string;
       roomLabel?: string;
       room_label?: string;
-      roomTagUid?: string;
-      room_tag_uid?: string;
     };
   };
 }>();
@@ -98,37 +78,25 @@ const editingRoomId = computed(() => props.componentProps?.room?.id || '');
 const is_edit_mode = computed(() => Boolean(editingRoomId.value));
 const form = ref({
   room_label: props.componentProps?.room?.roomLabel || props.componentProps?.room?.room_label || '',
-  room_tag_uid:
-    props.componentProps?.room?.roomTagUid || props.componentProps?.room?.room_tag_uid || '',
 });
 
 const initialForm = {
   room_label: form.value.room_label.trim(),
-  room_tag_uid: form.value.room_tag_uid.trim(),
 };
 
 const hasChanges = computed(() => {
-  return (
-    form.value.room_label.trim() !== initialForm.room_label ||
-    form.value.room_tag_uid.trim() !== initialForm.room_tag_uid
-  );
+  return form.value.room_label.trim() !== initialForm.room_label;
 });
-
-function generateRoomTagUid() {
-  const suffix = Math.random().toString(36).slice(2, 10).toUpperCase();
-  form.value.room_tag_uid = `ROOM-${suffix}`;
-}
 
 async function handleSubmit() {
   const roomLabel = form.value.room_label.trim();
-  const roomTagUid = form.value.room_tag_uid.trim();
 
   if (!siteId.value) {
     $q.notify({ color: 'negative', message: $t('errors.incomplete_data') });
     return;
   }
 
-  if (!roomLabel || !roomTagUid) {
+  if (!roomLabel) {
     $q.notify({ color: 'negative', message: $t('errors.room_details_required') });
     return;
   }
@@ -138,11 +106,9 @@ async function handleSubmit() {
     const room = is_edit_mode.value
       ? await siteStore.updateStorageRoom(editingRoomId.value, {
           room_label: roomLabel,
-          room_tag_uid: roomTagUid,
         })
       : await siteStore.createStorageRoom(siteId.value, {
           room_label: roomLabel,
-          room_tag_uid: roomTagUid,
         });
 
     $q.notify({

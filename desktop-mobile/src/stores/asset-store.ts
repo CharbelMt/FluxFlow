@@ -122,7 +122,7 @@ export const useAssetStore = defineStore('assets', {
       new_type?: {
         model_name: string;
         manufacturer: string;
-        category: string;
+        category?: string;
         maintenance_interval_hrs: number;
       };
       serial_numbers: string[];
@@ -158,10 +158,13 @@ export const useAssetStore = defineStore('assets', {
     async createAssetType(payload: {
       model_name: string;
       manufacturer: string;
-      category: string;
+      category?: string;
       maintenance_interval_hrs: number;
     }) {
-      const response = await api.post('/assets/types', payload);
+      const response = await api.post('/assets/types', {
+        ...payload,
+        category: payload.category ?? '',
+      });
       await this.fetchAssetTypes();
       return response.data;
     },
@@ -171,11 +174,14 @@ export const useAssetStore = defineStore('assets', {
       payload: {
         model_name: string;
         manufacturer: string;
-        category: string;
+        category?: string;
         maintenance_interval_hrs: number;
       },
     ) {
-      const response = await api.put(`/assets/types/${typeId}`, payload);
+      const response = await api.put(`/assets/types/${typeId}`, {
+        ...payload,
+        category: payload.category ?? '',
+      });
       await this.fetchAssetTypes();
       return response.data;
     },

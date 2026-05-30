@@ -22,7 +22,7 @@
         <div v-for="site in siteStore.sites" :key="site.id">
           <q-card
             bordered
-            class="overflow-hidden no-shadow rounded-2xl border-slate-300 bg-slate-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md!"
+            class="flex h-100 flex-col overflow-hidden no-shadow rounded-2xl border-slate-300 bg-slate-50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md!"
           >
             <q-card-section class="border-b border-slate-100 bg-slate-50/80">
               <div class="text-xl font-black tracking-tight text-slate-800">{{ site.name }}</div>
@@ -62,7 +62,7 @@
               </div>
             </q-card-section>
 
-            <q-card-section>
+            <q-card-section class="flex min-h-0 flex-1 flex-col">
               <div class="q-mb-sm flex items-center justify-between gap-3">
                 <div class="font-mono text-[11px] uppercase tracking-[0.17em] text-slate-400">
                   {{ $t('sites.storage_rooms') }}
@@ -79,47 +79,46 @@
                 />
               </div>
 
-              <div v-if="site.storageRooms.length > 0">
-                <q-list dense>
-                  <q-item v-for="room in site.storageRooms" :key="room.id" class="q-px-none">
-                    <q-item-section avatar>
-                      <q-icon :name="mdiDoorOpen" color="slate-400" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="font-semibold">{{ room.roomLabel }}</q-item-label>
-                      <q-item-label caption class="font-mono text-[10px] text-slate-500">
-                        {{ $t('sites.uid_label') }} {{ room.roomTagUid }}
-                      </q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <div class="row items-center q-gutter-xs">
-                        <q-btn
-                          flat
-                          round
-                          dense
-                          color="primary"
-                          :icon="mdiPencil"
-                          @click="openEditRoomDialog(site, room)"
-                        />
-                        <q-btn
-                          flat
-                          round
-                          dense
-                          color="teal"
-                          :icon="mdiQrcode"
-                          @click="generateRoomQr(site, room)"
-                        />
-                      </div>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </div>
-              <div
-                v-else
-                class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-400"
-              >
-                {{ $t('sites.no_rooms') }}
-              </div>
+              <q-scroll-area class="min-h-0 flex-1 pr-2">
+                <div v-if="site.storageRooms.length > 0">
+                  <q-list dense>
+                    <q-item v-for="room in site.storageRooms" :key="room.id" class="q-px-none">
+                      <q-item-section avatar>
+                        <q-icon :name="mdiDoorOpen" color="slate-400" />
+                      </q-item-section>
+                      <q-item-section>
+                        <q-item-label class="font-semibold">{{ room.roomLabel }}</q-item-label>
+                      </q-item-section>
+                      <q-item-section side>
+                        <div class="row items-center q-gutter-xs">
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            color="primary"
+                            :icon="mdiPencil"
+                            @click="openEditRoomDialog(site, room)"
+                          />
+                          <q-btn
+                            flat
+                            round
+                            dense
+                            color="teal"
+                            :icon="mdiQrcode"
+                            @click="generateRoomQr(site, room)"
+                          />
+                        </div>
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </div>
+                <div
+                  v-else
+                  class="rounded-xl border border-dashed border-slate-200 bg-white p-3 text-sm text-slate-400"
+                >
+                  {{ $t('sites.no_rooms') }}
+                </div>
+              </q-scroll-area>
             </q-card-section>
 
             <q-card-actions align="right" class="q-pb-md q-px-md">
@@ -278,9 +277,7 @@ function openEditRoomDialog(
   room: {
     id: string;
     roomLabel?: string;
-    roomTagUid?: string;
     room_label?: string;
-    room_tag_uid?: string;
   },
 ) {
   pushDialog(
@@ -340,13 +337,10 @@ function generateRoomQr(
   room: {
     id: string;
     roomLabel?: string;
-    roomTagUid?: string;
-    room_tag_uid?: string;
   },
 ) {
   const subtitle = `${site.name} / ${room.roomLabel || room.id}`;
-  const roomTagUid = room.roomTagUid || room.room_tag_uid || '';
-  const metadata = $t('sites.room_qr_meta', { roomId: room.id, roomTagUid });
+  const metadata = $t('sites.room_qr_meta', { roomId: room.id });
 
   void (async () => {
     try {

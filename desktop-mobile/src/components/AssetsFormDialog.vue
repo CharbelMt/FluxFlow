@@ -37,15 +37,9 @@
           <div class="text-overline text-primary font-bold">
             {{ $t('forms.add_asset.step2') }}
           </div>
-          <q-toggle
-            v-model="is_new_type"
-            :label="$t('forms.add_asset.create_new_model')"
-            dense
-            color="primary"
-          />
         </div>
 
-        <div v-if="!is_new_type">
+        <div>
           <q-select
             v-model="form.type_id"
             :label="$t('forms.add_asset.select_existing_model')"
@@ -54,37 +48,6 @@
             emit-value
             map-options
           />
-        </div>
-
-        <div
-          v-else
-          class="q-pa-md rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col gap-3"
-        >
-          <q-input
-            v-model="form.new_type.model_name"
-            :label="$t('forms.add_asset.model_name')"
-            outlined
-          />
-          <q-input
-            v-model="form.new_type.manufacturer"
-            :label="$t('forms.add_asset.manufacturer')"
-            outlined
-          />
-          <div class="row gap-3">
-            <q-input
-              v-model="form.new_type.category"
-              :label="$t('forms.add_asset.category')"
-              outlined
-              class="flex-1"
-            />
-            <q-input
-              v-model.number="form.new_type.maintenance_interval_hrs"
-              type="number"
-              :label="$t('forms.add_asset.interval_hours')"
-              outlined
-              class="flex-1"
-            />
-          </div>
         </div>
       </div>
 
@@ -141,7 +104,6 @@ const assetStore = useAssetStore();
 const siteStore = useSiteStore();
 const { t: $t } = useI18n();
 
-const is_new_type = ref(false);
 const submitting = ref(false);
 const serial_input = ref('');
 
@@ -149,39 +111,21 @@ const form = ref({
   site_id: '',
   room_id: '',
   type_id: undefined as string | undefined,
-  new_type: {
-    model_name: '',
-    manufacturer: '',
-    category: '',
-    maintenance_interval_hrs: 0,
-  },
 });
 
 const initialState = {
-  is_new_type: is_new_type.value,
   serial_input: serial_input.value,
   site_id: form.value.site_id,
   room_id: form.value.room_id,
   type_id: form.value.type_id,
-  new_type: {
-    model_name: form.value.new_type.model_name,
-    manufacturer: form.value.new_type.manufacturer,
-    category: form.value.new_type.category,
-    maintenance_interval_hrs: form.value.new_type.maintenance_interval_hrs,
-  },
 };
 
 const hasChanges = computed(() => {
   return (
-    is_new_type.value !== initialState.is_new_type ||
     serial_input.value !== initialState.serial_input ||
     form.value.site_id !== initialState.site_id ||
     form.value.room_id !== initialState.room_id ||
-    form.value.type_id !== initialState.type_id ||
-    form.value.new_type.model_name !== initialState.new_type.model_name ||
-    form.value.new_type.manufacturer !== initialState.new_type.manufacturer ||
-    form.value.new_type.category !== initialState.new_type.category ||
-    form.value.new_type.maintenance_interval_hrs !== initialState.new_type.maintenance_interval_hrs
+    form.value.type_id !== initialState.type_id
   );
 });
 
@@ -207,7 +151,7 @@ async function handleSubmission() {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  if (serials.length === 0 || !form.value.site_id || !form.value.room_id) {
+  if (serials.length === 0 || !form.value.site_id || !form.value.room_id || !form.value.type_id) {
     $q.notify({ color: 'negative', message: $t('errors.incomplete_data') });
     return;
   }
@@ -218,11 +162,7 @@ async function handleSubmission() {
       site_id: form.value.site_id,
       room_id: form.value.room_id,
       serial_numbers: serials,
-      ...(is_new_type.value
-        ? { new_type: form.value.new_type }
-        : form.value.type_id
-          ? { type_id: form.value.type_id }
-          : {}),
+      type_id: form.value.type_id,
     };
 
     const result = await assetStore.bulkCreateAssets(payload);

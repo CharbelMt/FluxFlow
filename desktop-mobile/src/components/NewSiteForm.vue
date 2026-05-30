@@ -19,6 +19,8 @@
           v-model="form.location_gps"
           :label="$t('forms.new_site.location_gps')"
           outlined
+          :rules="locationGpsRules"
+          hide-bottom-space
           :disable="submitting"
           :hint="$t('forms.new_site.location_hint')"
         />
@@ -113,6 +115,34 @@ const initialForm = {
   location_gps: form.value.location_gps.trim(),
 };
 const initialSelectedSupervisorIds = ref<string[]>([]);
+
+const locationGpsRules = [
+  (value: string) => {
+    const trimmed_value = value.trim();
+    if (!trimmed_value) return true;
+
+    const coordinate_match = trimmed_value.match(
+      /^(-?\d{1,2}(?:\.\d+)?),\s*(-?\d{1,3}(?:\.\d+)?)$/,
+    );
+
+    if (!coordinate_match) {
+      return $t('errors.invalid_gps_location');
+    }
+
+    const latitude = Number(coordinate_match[1]);
+    const longitude = Number(coordinate_match[2]);
+
+    if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+      return $t('errors.invalid_gps_location');
+    }
+
+    if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+      return $t('errors.invalid_gps_location');
+    }
+
+    return true;
+  },
+];
 
 const supervisorOptions = computed(() =>
   supervisorStore.supervisors.map((supervisor) => ({
