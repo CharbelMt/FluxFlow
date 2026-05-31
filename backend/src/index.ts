@@ -737,6 +737,72 @@ const app = new Elysia()
 				},
 			)
 
+			.get(
+				"/:asset_id/audit-logs",
+				async ({ params, set }) => {
+					const audit_logs = await db
+						.select({
+							id: schema.auditLogs.id,
+							assetId: schema.auditLogs.assetId,
+							roomId: schema.auditLogs.roomId,
+							supervisorId: schema.auditLogs.supervisorId,
+							clientCreatedAt: schema.auditLogs.clientCreatedAt,
+							serverSyncedAt: schema.auditLogs.serverSyncedAt,
+							actionType: schema.auditLogs.actionType,
+							witnessGps: schema.auditLogs.witnessGps,
+							conditionScore: schema.auditLogs.conditionScore,
+							hoursUsedIncrement: schema.auditLogs.hoursUsedIncrement,
+							supervisorFullName: schema.users.fullName,
+							supervisorEmail: schema.users.email,
+							storageRoomLabel: schema.storageRooms.roomLabel,
+						})
+						.from(schema.auditLogs)
+						.leftJoin(
+							schema.users,
+							eq(schema.auditLogs.supervisorId, schema.users.id),
+						)
+						.leftJoin(
+							schema.storageRooms,
+							eq(schema.auditLogs.roomId, schema.storageRooms.id),
+						)
+						.where(eq(schema.auditLogs.assetId, params.asset_id))
+						.orderBy(desc(schema.auditLogs.clientCreatedAt));
+
+					return {
+						success: true,
+						audit_logs: audit_logs.map((entry) => ({
+							id: entry.id,
+							assetId: entry.assetId,
+							roomId: entry.roomId,
+							supervisorId: entry.supervisorId,
+							clientCreatedAt: entry.clientCreatedAt,
+							serverSyncedAt: entry.serverSyncedAt,
+							actionType: entry.actionType,
+							witnessGps: entry.witnessGps,
+							conditionScore: entry.conditionScore,
+							hoursUsedIncrement: entry.hoursUsedIncrement,
+							user:
+								entry.supervisorFullName || entry.supervisorEmail
+									? {
+											fullName: entry.supervisorFullName || "",
+											email: entry.supervisorEmail || undefined,
+										}
+									: null,
+							storageRoom: entry.storageRoomLabel
+								? {
+										roomLabel: entry.storageRoomLabel,
+									}
+								: null,
+						})),
+					};
+				},
+				{
+					params: t.Object({
+						asset_id: t.String(),
+					}),
+				},
+			)
+
 			.post(
 				"/:asset_id/maintenance",
 				async ({ params, body, set }) => {

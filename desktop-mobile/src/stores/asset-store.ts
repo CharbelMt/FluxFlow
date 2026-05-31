@@ -3,6 +3,26 @@ import { api } from 'boot/axios';
 import { submitUsageLog, syncPendingLogs } from 'src/services/usage_service';
 import type { AssetInstance, AssetType, MaintenanceRecord, Site } from 'src/utils/types';
 
+export interface AuditLogEntry {
+  id: string;
+  assetId: string | null;
+  roomId: string | null;
+  supervisorId: string | null;
+  clientCreatedAt: string;
+  serverSyncedAt: string | null;
+  actionType: string | null;
+  witnessGps: string | null;
+  conditionScore: number | null;
+  hoursUsedIncrement: number | null;
+  user?: {
+    fullName: string;
+    email?: string;
+  } | null;
+  storageRoom?: {
+    roomLabel: string;
+  } | null;
+}
+
 export interface AssetWithDetails extends AssetInstance {
   type: AssetType;
   site: Site;
@@ -85,6 +105,14 @@ export const useAssetStore = defineStore('assets', {
       return response.data as {
         success: true;
         maintenance_records: MaintenanceRecord[];
+      };
+    },
+
+    async fetchAssetAuditLogs(asset_id: string) {
+      const response = await api.get(`/assets/${asset_id}/audit-logs`);
+      return response.data as {
+        success: true;
+        audit_logs: AuditLogEntry[];
       };
     },
 

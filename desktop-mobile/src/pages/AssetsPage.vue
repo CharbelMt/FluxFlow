@@ -157,7 +157,7 @@
             <q-btn flat round dense icon="more_vert" color="slate-400" rounded>
               <q-menu auto-close>
                 <q-list style="min-width: 150px">
-                  <q-item clickable @click="viewHistory(props.row.id)">
+                  <q-item clickable @click="viewHistory(props.row)">
                     <q-item-section avatar><q-icon name="history" /></q-item-section>
                     <q-item-section>{{ $t('assets.audit_history') }}</q-item-section>
                   </q-item>
@@ -192,6 +192,7 @@ import { useSiteStore } from 'src/stores/site-store';
 import { useAuthStore } from 'src/stores/auth-store';
 import { useDialog } from 'src/composables/useDialog';
 import AssetsFormDialog from 'components/AssetsFormDialog.vue';
+import AssetAuditHistoryDialog from 'components/dialog/AssetAuditHistoryDialog.vue';
 import QrPreviewDialog from 'components/QrPreviewDialog.vue';
 import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
@@ -335,8 +336,13 @@ function getStatusTextColor(status: string) {
   }
 }
 
-function viewHistory(assetId: string) {
-  console.log(`Navigating to history for ${assetId}`);
+function viewHistory(asset: { id: string; serialNumber?: string; serial_number?: string }) {
+  const assetLabel = asset.serialNumber || asset.serial_number || asset.id;
+
+  pushDialog(AssetAuditHistoryDialog, {
+    assetId: asset.id,
+    assetLabel,
+  });
 }
 
 async function generateAssetQr(asset: {
