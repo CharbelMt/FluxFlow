@@ -257,8 +257,17 @@ export const useAssetStore = defineStore('assets', {
       notes: string;
       location_gps?: string;
     }) {
-      const response = await api.post(`/storage-rooms/${payload.room_id}/audit`, payload);
+      const { room_id, ...body } = payload;
+      const response = await api.post(`/storage-rooms/${room_id}/audit`, body);
       return response.data;
+    },
+
+    async fetchRoomAuditLogs(room_id: string) {
+      const response = await api.get(`/storage-rooms/${room_id}/audit-logs`);
+      return response.data as {
+        success: true;
+        audit_logs: AuditLogEntry[];
+      };
     },
   },
 });
