@@ -93,12 +93,22 @@ export default defineConfig((ctx) => {
           { server: false },
         ],
       ],
+
+      extendViteConf(viteConf, { isClient }) {
+        if (!('capacitor' in ctx.mode) || !ctx.mode.capacitor || !isClient) {
+          return;
+        }
+
+        viteConf.server ||= {};
+        viteConf.server.host = '0.0.0.0';
+      },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
-      https: true,
+      https: false,
       open: true, // opens browser window automatically
+      host: '0.0.0.0',
       proxy: {
         // Proxy '/api/*' to the backend running on localhost:3000 to avoid mixed-content
         // The proxy will strip the '/api' prefix before forwarding to the backend.
@@ -191,6 +201,13 @@ export default defineConfig((ctx) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-capacitor-apps/configuring-capacitor
     capacitor: {
       hideSplashscreen: true,
+      capacitorConfig: {
+        server: {
+          androidScheme: 'http',
+          url: 'http://localhost:9500',
+          cleartext: true,
+        },
+      },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/configuring-electron
