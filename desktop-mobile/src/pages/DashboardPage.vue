@@ -123,7 +123,7 @@ const summary_metrics = computed(() => [
   },
   {
     label: $t('dashboard.repair_needed'),
-    value: assetStore.assets.filter((a) => a.status === 'repair').length,
+    value: assetStore.assets.filter((a) => a.status === 'needs_maintenance').length,
     icon: mdiAlertDecagram,
     iconColor: 'orange-8',
     iconBgClass: 'bg-orange-50',
