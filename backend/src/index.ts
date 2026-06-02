@@ -430,6 +430,56 @@ const app = new Elysia()
 				},
 			)
 
+			.post(
+				"/:room_id/audit",
+				async ({ params, body, set }) => {
+					const room_id = params.room_id;
+					const audit_id = crypto.randomUUID();
+
+					try {
+						const new_audit = await db
+							.insert(schema.auditLogs)
+							.values({
+								id: audit_id,
+								roomId: room_id,
+								actionType: `ROOM_AUDIT_${body.status.toUpperCase()}`,
+								conditionScore: body.status === "operational" ? 100 : 50,
+								clientCreatedAt: new Date().toISOString(),
+								witnessGps: JSON.stringify({
+									coords: body.gps_coordinates,
+									all_assets_present: body.all_assets_present,
+									notes: body.notes.trim(),
+								}),
+							})
+							.returning();
+
+						return { success: true, audit: new_audit[0] };
+					} catch (error) {
+						set.status = 500;
+						return {
+							error: "Failed to save room audit log.",
+							details: String(error),
+						};
+					}
+				},
+				{
+					params: t.Object({
+						room_id: t.String(),
+					}),
+					body: t.Object({
+						status: t.String(),
+						notes: t.String(),
+						all_assets_present: t.Boolean(),
+						gps_coordinates: t.Nullable(
+							t.Object({
+								lat: t.Number(),
+								lng: t.Number(),
+							}),
+						),
+					}),
+				},
+			)
+
 			.get(
 				"/:room_id/qr",
 				async ({ params, set }) => {
@@ -537,6 +587,44 @@ const app = new Elysia()
 						site_id: t.String(),
 						room_label: t.String(),
 						room_tag_uid: t.Optional(t.String()),
+					}),
+				},
+			)
+
+			.delete(
+				"/:room_id",
+				async ({ params, set }) => {
+					const room_id = params.room_id;
+					const existing_room = await db.query.storageRooms.findFirst({
+						where: eq(schema.storageRooms.id, room_id),
+					});
+
+					if (!existing_room) {
+						set.status = 404;
+						return { error: "Storage room not found." };
+					}
+
+					await db.transaction(async (tx) => {
+						await tx
+							.update(schema.assetInstances)
+							.set({ currentRoomId: null })
+							.where(eq(schema.assetInstances.currentRoomId, room_id));
+
+						await tx
+							.update(schema.auditLogs)
+							.set({ roomId: null })
+							.where(eq(schema.auditLogs.roomId, room_id));
+
+						await tx
+							.delete(schema.storageRooms)
+							.where(eq(schema.storageRooms.id, room_id));
+					});
+
+					return { success: true };
+				},
+				{
+					params: t.Object({
+						room_id: t.String(),
 					}),
 				},
 			),
