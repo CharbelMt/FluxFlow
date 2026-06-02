@@ -38,6 +38,10 @@
             </div>
           </div>
 
+          <q-banner v-if="errorMessage" class="bg-negative text-white q-mb-md">
+            {{ errorMessage }}
+          </q-banner>
+
           <q-form ref="loginForm" @submit="onSubmit" class="space-y-5">
             <div class="group relative">
               <q-input
@@ -122,15 +126,18 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useAuthStore } from 'src/stores/auth-store';
 import { mdiEmail, mdiLock } from '@quasar/extras/mdi-v7';
 import type { LoginCredentials } from 'src/utils/types';
 
 const router = useRouter();
 const authStore = useAuthStore();
+const $q = useQuasar();
 
 const isPwd = ref(true);
 const isLoading = ref(false);
+const errorMessage = ref('');
 
 const form = ref<LoginCredentials>({
   email: '',
@@ -140,6 +147,8 @@ const form = ref<LoginCredentials>({
 
 async function onSubmit() {
   isLoading.value = true;
+  errorMessage.value = '';
+
   try {
     const success = await authStore.login({
       email: form.value.email,
@@ -149,9 +158,18 @@ async function onSubmit() {
 
     if (success) {
       await router.push(authStore.user?.role === 'supervisor' ? { name: 'scanner' } : '/');
+    } else {
+      const msg = 'Invalid email or password';
+      errorMessage.value = msg;
+
+      $q.notify({ color: 'negative', message: msg });
     }
-  } catch (error) {
-    console.error('Login failed:', error);
+  } catch (e: unknown) {
+    console.error('Login failed:', e);
+    const err = e as { response?: { data?: { error?: string } }; message?: string };
+    const msg = err.response?.data?.error || err.message || 'Login failed';
+    errorMessage.value = String(msg);
+    $q.notify({ color: 'negative', message: String(msg) });
   } finally {
     isLoading.value = false;
   }
