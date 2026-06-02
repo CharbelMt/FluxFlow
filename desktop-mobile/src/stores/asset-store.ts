@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia';
 import { api } from 'boot/axios';
 import { submitUsageLog, syncPendingLogs } from 'src/services/usage_service';
-import type { AssetInstance, AssetType, MaintenanceRecord, Site } from 'src/utils/types';
+import type {
+  AssetInstance,
+  AssetType,
+  MaintenanceRecord,
+  Site,
+  StorageRoom,
+} from 'src/utils/types';
 
 export interface AuditLogEntry {
   id: string;
@@ -14,6 +20,7 @@ export interface AuditLogEntry {
   witnessGps: string | null;
   conditionScore: number | null;
   hoursUsedIncrement: number | null;
+  actionNotes?: string | null;
   user?: {
     fullName: string;
     email?: string;
@@ -237,6 +244,21 @@ export const useAssetStore = defineStore('assets', {
     async deleteAssetType(typeId: string) {
       await api.delete(`/assets/types/${typeId}`);
       await this.fetchAssetTypes();
+    },
+
+    async fetchRoomById(room_id: string) {
+      const response = await api.get(`/storage-rooms/${room_id}`);
+      return response.data as { success: true; room: StorageRoom };
+    },
+
+    async logRoomAudit(payload: {
+      room_id: string;
+      status: string;
+      notes: string;
+      location_gps?: string;
+    }) {
+      const response = await api.post(`/storage-rooms/${payload.room_id}/audit`, payload);
+      return response.data;
     },
   },
 });

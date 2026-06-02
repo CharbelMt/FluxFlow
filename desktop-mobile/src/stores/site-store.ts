@@ -132,5 +132,9 @@ export const useSiteStore = defineStore('sites', {
         throw error;
       }
     },
+
+    async deleteStorageRoom(room_id: string) {
+      await api.delete(`/storage-rooms/${room_id}`);
+    },
   },
 });
