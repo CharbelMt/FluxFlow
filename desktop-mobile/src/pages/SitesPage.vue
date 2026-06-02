@@ -383,21 +383,51 @@ function confirmDeleteRoom(site: { name: string }, room: { id: string; roomLabel
   });
 }
 
-function showRoomLocationDetails(room: {
-  id: string;
-  roomLabel?: string;
-  specificLocationDetails?: string;
-}) {
-  const location_text = room.specificLocationDetails || $t('sites.no_location_details');
-  $q.dialog({
-    title: $t('sites.location_details', 'Room Location Details'),
-    message: `<strong>${room.roomLabel || room.id}</strong><br><br>${location_text}`,
-    html: true,
-    ok: {
-      label: $t('common.close', 'Close'),
-      unelevated: true,
-    },
-  });
+async function showRoomLocationDetails(room: { id: string; roomLabel?: string }) {
+  try {
+    const [room_response, logs_response] = await Promise.all([
+      assetStore.fetchRoomById(room.id),
+      assetStore.fetchRoomAuditLogs(room.id),
+    ]);
+
+    const site_gps = room_response.room.site?.locationGps || room_response.room.site?.location_gps;
+    const logs = logs_response.audit_logs;
+
+    const gps_section = site_gps
+      ? `<div class="q-mb-sm"><strong>${$t('sites.site_gps', 'Site GPS')}:</strong> ${site_gps}</div>`
+      : '';
+
+    const logs_section =
+      logs.length > 0
+        ? logs
+            .map((entry) => {
+              const date = new Date(entry.clientCreatedAt).toLocaleString();
+              const raw = entry.witnessGps || '';
+              const [first_part, ...rest_parts] = raw.split(' — ');
+              const is_gps = /^-?\d/.test(first_part ?? '');
+              const gps = is_gps ? `<br><small>📍 ${first_part}</small>` : '';
+              const notes_text = is_gps ? rest_parts.join(' — ') : raw;
+              const notes = notes_text ? `<br><small>📝 ${notes_text}</small>` : '';
+
+              const status = entry.actionType?.replace('ROOM_AUDIT_', '') || '';
+              return `<div class="q-mb-xs">${date}${status ? ` — ${status}` : ''}${gps}${notes}</div>`;
+            })
+            .join('')
+        : `<div class="text-grey-6">${$t('asset_detail.room_audit_empty', 'No audit logs yet.')}</div>`;
+
+    $q.dialog({
+      title: room.roomLabel || room.id,
+      message: `${gps_section}<br>${logs_section}`,
+      html: true,
+      ok: { label: $t('common.close', 'Close'), unelevated: true },
+    });
+  } catch (error) {
+    console.error(error);
+    $q.notify({
+      color: 'negative',
+      message: $t('errors.failed_load_room_details', 'Failed to load room details.'),
+    });
+  }
 }
 
 function generateRoomQr(
