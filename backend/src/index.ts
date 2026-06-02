@@ -709,6 +709,68 @@ const app = new Elysia()
 				},
 			)
 
+			.put(
+				"/:asset_id",
+				async ({ params, body, set }) => {
+					const existing_asset = await db.query.assetInstances.findFirst({
+						where: eq(schema.assetInstances.id, params.asset_id),
+					});
+					if (!existing_asset) {
+						set.status = 404;
+						return { error: "Asset not found." };
+					}
+
+					try {
+						const [updated] = await db
+							.update(schema.assetInstances)
+							.set({
+								serialNumber:
+									typeof body.serial_number !== "undefined"
+										? body.serial_number
+										: existing_asset.serialNumber,
+								typeId:
+									typeof body.type_id !== "undefined"
+										? body.type_id
+										: existing_asset.typeId,
+								assignedSiteId:
+									typeof body.assigned_site_id !== "undefined"
+										? body.assigned_site_id
+										: existing_asset.assignedSiteId,
+								currentRoomId:
+									typeof body.current_room_id !== "undefined"
+										? body.current_room_id
+										: existing_asset.currentRoomId,
+								status:
+									typeof body.status !== "undefined"
+										? body.status
+										: existing_asset.status,
+							})
+							.where(eq(schema.assetInstances.id, params.asset_id))
+							.returning();
+
+						const fetched = await db.query.assetInstances.findFirst({
+							where: eq(schema.assetInstances.id, params.asset_id),
+							with: { type: true, site: true, room: true },
+						});
+
+						return { success: true, asset: fetched };
+					} catch (err) {
+						set.status = 400;
+						return { error: "Failed to update asset", details: String(err) };
+					}
+				},
+				{
+					params: t.Object({ asset_id: t.String() }),
+					body: t.Object({
+						serial_number: t.Optional(t.String()),
+						type_id: t.Optional(t.String()),
+						assigned_site_id: t.Optional(t.String()),
+						current_room_id: t.Optional(t.String()),
+						status: t.Optional(t.String()),
+					}),
+				},
+			)
+
 			.get(
 				"/:asset_id/maintenance",
 				async ({ params, set }) => {
