@@ -437,19 +437,25 @@ const app = new Elysia()
 					const audit_id = crypto.randomUUID();
 
 					try {
+						let condition_score = 3;
+						if (body.status === "operational") condition_score = 5;
+						else if (body.status === "restricted") condition_score = 3;
+						else if (body.status === "hazard") condition_score = 1;
+
 						const new_audit = await db
 							.insert(schema.auditLogs)
 							.values({
 								id: audit_id,
 								roomId: room_id,
 								actionType: `ROOM_AUDIT_${body.status.toUpperCase()}`,
-								conditionScore: body.status === "operational" ? 100 : 50,
-								clientCreatedAt: new Date().toISOString(),
-								witnessGps: JSON.stringify({
-									coords: body.gps_coordinates,
-									all_assets_present: body.all_assets_present,
-									notes: body.notes.trim(),
-								}),
+								conditionScore: condition_score,
+								clientCreatedAt: new Date()
+									.toISOString()
+									.replace("T", " ")
+									.replace("Z", ""),
+								witnessGps:
+									[body.location_gps, body.notes].filter(Boolean).join(" — ") ||
+									null,
 							})
 							.returning();
 
@@ -468,14 +474,8 @@ const app = new Elysia()
 					}),
 					body: t.Object({
 						status: t.String(),
-						notes: t.String(),
-						all_assets_present: t.Boolean(),
-						gps_coordinates: t.Nullable(
-							t.Object({
-								lat: t.Number(),
-								lng: t.Number(),
-							}),
-						),
+						notes: t.Optional(t.String()),
+						location_gps: t.Optional(t.String()),
 					}),
 				},
 			)
@@ -522,6 +522,29 @@ const app = new Elysia()
 					params: t.Object({
 						room_id: t.String(),
 					}),
+				},
+			)
+
+			.get(
+				"/:room_id/audit-logs",
+				async ({ params }) => {
+					const audit_logs = await db
+						.select({
+							id: schema.auditLogs.id,
+							roomId: schema.auditLogs.roomId,
+							clientCreatedAt: schema.auditLogs.clientCreatedAt,
+							actionType: schema.auditLogs.actionType,
+							conditionScore: schema.auditLogs.conditionScore,
+							witnessGps: schema.auditLogs.witnessGps,
+						})
+						.from(schema.auditLogs)
+						.where(eq(schema.auditLogs.roomId, params.room_id))
+						.orderBy(desc(schema.auditLogs.clientCreatedAt));
+
+					return { success: true, audit_logs };
+				},
+				{
+					params: t.Object({ room_id: t.String() }),
 				},
 			)
 
