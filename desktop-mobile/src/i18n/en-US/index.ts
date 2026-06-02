@@ -60,6 +60,7 @@ export default {
     view_location_details: 'View Location Details',
     location_details: 'Room Location Details',
     no_location_details: 'No location details recorded for this room.',
+    site_gps: 'Site GPS',
   },
   assets: {
     site_scope: 'Site Scope: {selectedSiteName}',
@@ -170,6 +171,7 @@ export default {
     room_hazard: 'Safety Hazard Present',
     room_saved: 'Room audit saved',
     failed_save_room: 'Failed to save room audit',
+    room_audit_empty: 'Room audit empty.',
   },
   supervisors: {
     user_actions: 'User actions',
