@@ -194,7 +194,7 @@ import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useDialog } from 'src/composables/useDialog';
-import ConfirmSaveDialog from 'components/dialog/ConfirmSaveDialog.vue';
+import ConfirmSaveDialog from 'components/ConfirmSaveDialog.vue';
 import type { AssetInstance, MaintenanceRecord } from 'src/utils/types';
 
 const route = useRoute();

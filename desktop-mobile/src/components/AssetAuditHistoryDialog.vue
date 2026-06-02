@@ -59,7 +59,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import CardSectionTitle from './CardSectionTitle.vue';
+import CardSectionTitle from './dialog/CardSectionTitle.vue';
 import { useAssetStore, type AuditLogEntry } from 'src/stores/asset-store';
 
 interface ComponentProps {

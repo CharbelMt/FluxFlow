@@ -192,11 +192,11 @@ import { useSiteStore } from 'src/stores/site-store';
 import { useAuthStore } from 'src/stores/auth-store';
 import { useDialog } from 'src/composables/useDialog';
 import AssetsFormDialog from 'components/AssetsFormDialog.vue';
-import AssetAuditHistoryDialog from 'components/dialog/AssetAuditHistoryDialog.vue';
 import QrPreviewDialog from 'components/QrPreviewDialog.vue';
 import type { QTableColumn } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import AssetAuditHistoryDialog from 'components/AssetAuditHistoryDialog.vue';
 
 const assetStore = useAssetStore();
 const siteStore = useSiteStore();
