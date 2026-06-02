@@ -32,20 +32,37 @@
         />
 
         <div v-if="recent_scans.length > 0" class="q-mt-lg">
-          <div class="text-subtitle2 q-mb-sm">{{ $t('scanner.recent_scans') }}</div>
+          <div class="row items-center justify-between q-mb-sm">
+            <div class="text-subtitle2">{{ $t('scanner.recent_scans') }}</div>
+            <q-btn
+              flat
+              dense
+              size="sm"
+              color="negative"
+              icon="delete_sweep"
+              :label="$t('common.clear')"
+              @click="clearRecentScans"
+            />
+          </div>
           <q-list bordered separator>
             <q-item
               v-for="(scan, index) in recent_scans"
               :key="index"
               clickable
-              @click="goToAssetDetail(scan.asset_id)"
+              @click="navigateToRecentScan(scan.scanned_id, scan.type)"
             >
               <q-item-section avatar>
-                <q-icon name="inventory_2" color="primary" />
+                <q-icon
+                  :name="scan.type === 'room' ? 'store' : 'inventory_2'"
+                  :color="scan.type === 'room' ? 'warning' : 'primary'"
+                />
               </q-item-section>
               <q-item-section>
                 <q-item-label>{{ scan.label }}</q-item-label>
-                <q-item-label caption>{{ scan.asset_id }}</q-item-label>
+                <q-item-label caption
+                  >{{ scan.type === 'room' ? $t('common.room') : $t('common.asset') }} ·
+                  {{ scan.scanned_id }}</q-item-label
+                >
               </q-item-section>
               <q-item-section side top>
                 <div class="text-grey text-xs">{{ formatTime(scan.timestamp) }}</div>
@@ -98,7 +115,8 @@ import { useI18n } from 'vue-i18n';
 import { useScanner } from '../composables/useScanner';
 
 interface RecentScan {
-  asset_id: string;
+  scanned_id: string;
+  type: 'asset' | 'room';
   label: string;
   timestamp: number;
 }
@@ -126,51 +144,96 @@ onMounted(() => {
   }
 });
 
-function extractAssetId(raw_qr_data: string) {
+interface ParsedScan {
+  type: 'asset' | 'room';
+  id: string;
+}
+
+function parseScanData(raw_qr_data: string): ParsedScan | null {
   const qr_payload = raw_qr_data.trim();
 
   if (!qr_payload) {
-    return '';
+    return null;
   }
 
+  // Check for type prefix (asset|UUID or room|UUID)
+  const prefix_match = qr_payload.match(/^(asset|room)\|([a-f0-9-]+)$/i);
+  if (prefix_match?.[1] && prefix_match?.[2]) {
+    return {
+      type: prefix_match[1].toLowerCase() as 'asset' | 'room',
+      id: prefix_match[2],
+    };
+  }
+
+  // Fallback for backward compatibility - try parsing as URL or UUID
   try {
     const parsed_url = new URL(qr_payload);
     const query_asset_id = parsed_url.searchParams.get('asset_id');
     if (query_asset_id) {
-      return query_asset_id.trim();
+      return { type: 'asset', id: query_asset_id.trim() };
     }
 
     const path_parts = parsed_url.pathname.split('/').filter(Boolean);
-    return path_parts.at(-1)?.trim() || qr_payload;
+    const extracted_id = path_parts.at(-1)?.trim();
+    if (extracted_id) {
+      return { type: 'asset', id: extracted_id };
+    }
   } catch {
     const query_match = qr_payload.match(/[?&]asset_id=([^&]+)/i);
     if (query_match?.[1]) {
-      return decodeURIComponent(query_match[1]).trim();
+      return {
+        type: 'asset',
+        id: decodeURIComponent(query_match[1]).trim(),
+      };
     }
-
-    return qr_payload;
   }
+
+  // If all else fails, assume it's an asset (backward compatibility)
+  return { type: 'asset', id: qr_payload };
 }
 
-function persistRecentScans(asset_id: string) {
+function persistRecentScans(scanned_id: string, type: 'asset' | 'room') {
+  const label =
+    type === 'room'
+      ? t('scanner.storage_room', { roomId: scanned_id })
+      : t('scanner.asset', { assetId: scanned_id });
+
   const new_scan: RecentScan = {
-    asset_id,
-    label: t('scanner.asset_label', { assetId: asset_id }),
+    scanned_id,
+    type,
+    label,
     timestamp: Date.now(),
   };
 
   recent_scans.value = [
     new_scan,
-    ...recent_scans.value.filter((scan) => scan.asset_id !== asset_id),
+    ...recent_scans.value.filter((scan) => scan.scanned_id !== scanned_id),
   ].slice(0, MAX_RECENT_SCANS);
 
   localStorage.setItem('scanner_recent_scans', JSON.stringify(recent_scans.value));
 }
 
-async function goToAssetDetail(asset_id: string) {
+function clearRecentScans() {
+  recent_scans.value = [];
+  localStorage.removeItem('scanner_recent_scans');
+}
+
+async function navigateToScannedItem(scanned_id: string, type: 'asset' | 'room') {
   await router_instance.push({
     name: 'asset-detail',
-    params: { asset_id },
+    params: { asset_id: scanned_id },
+    query: type === 'room' ? { type: 'room' } : {},
+  });
+}
+
+async function navigateToRecentScan(scanned_id: string, type: 'asset' | 'room') {
+  await router_instance.push({
+    name: 'asset-detail',
+    params: { asset_id: scanned_id },
+    query: {
+      ...(type === 'room' ? { type: 'room' } : {}),
+      readonly: 'true',
+    },
   });
 }
 
@@ -185,8 +248,8 @@ async function handleDetect(results: Array<{ rawValue: string }>) {
   const raw_qr_data = await scannerOnDetect(results);
   if (!raw_qr_data) return;
 
-  const asset_id = extractAssetId(raw_qr_data);
-  if (!asset_id) {
+  const parsed = parseScanData(raw_qr_data);
+  if (!parsed || !parsed.id) {
     scan_status.value = t('scanner.invalid_asset_id');
     $q.notify({ type: 'negative', message: scan_status.value, position: 'top' });
     is_scanning.value = false;
@@ -194,10 +257,10 @@ async function handleDetect(results: Array<{ rawValue: string }>) {
     return;
   }
 
-  persistRecentScans(asset_id);
+  persistRecentScans(parsed.id, parsed.type);
   is_scanning.value = false;
   document.body.classList.remove('barcode-scanner-active');
-  await goToAssetDetail(asset_id);
+  await navigateToScannedItem(parsed.id, parsed.type);
 }
 
 function cameraOn() {
