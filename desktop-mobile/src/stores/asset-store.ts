@@ -183,6 +183,26 @@ export const useAssetStore = defineStore('assets', {
       }
     },
 
+    async updateAsset(
+      assetId: string,
+      payload: {
+        serial_number?: string | null;
+        type_id?: string | null;
+        assigned_site_id?: string | null;
+        current_room_id?: string | null;
+        status?: string | null;
+      },
+    ) {
+      this.loading = true;
+      try {
+        const response = await api.put(`/assets/${assetId}`, payload);
+        await this.fetchAssets();
+        return response.data;
+      } finally {
+        this.loading = false;
+      }
+    },
+
     async createAssetType(payload: {
       model_name: string;
       manufacturer: string;
