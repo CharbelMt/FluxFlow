@@ -81,50 +81,49 @@ export const useScanner = () => {
 
   let active_scan_finished = false;
 
-  const processScanUuid = async (uuid: string) => {
+  const processScanUuid = async (raw: string) => {
     is_loading.value = true;
     error_message.value = null;
     scanned_item.value = null;
 
-    try {
-      // First, try to fetch as an asset
-      try {
-        const asset_response = await api.get<{
-          success: boolean;
-          asset: ScannedAsset['data'];
-        }>(`/assets/${uuid}`);
+    is_loading.value = true;
+    error_message.value = null;
+    scanned_item.value = null;
 
-        if (asset_response.data.success) {
-          scanned_item.value = {
-            type: 'asset',
-            data: asset_response.data.asset,
-          };
-          return;
-        }
-      } catch (asset_error) {
-        const axios_error = asset_error as AxiosError<ApiErrorBody>;
-        if (axios_error.response?.status !== 404) {
-          throw asset_error;
+    const [prefix, uuid] = raw.includes('|') ? raw.split('|') : [null, raw];
+
+    try {
+      if (prefix === 'asset' || !prefix) {
+        try {
+          const asset_response = await api.get<{
+            success: boolean;
+            asset: ScannedAsset['data'];
+          }>(`/assets/${uuid}`);
+
+          if (asset_response.data.success) {
+            scanned_item.value = { type: 'asset', data: asset_response.data.asset };
+            return;
+          }
+        } catch (asset_error) {
+          const axios_error = asset_error as AxiosError<ApiErrorBody>;
+          if (axios_error.response?.status !== 404) throw asset_error;
         }
       }
 
-      try {
-        const room_response = await api.get<{
-          success: boolean;
-          room: ScannedRoom['data'];
-        }>(`/storage-rooms/${uuid}`);
+      if (prefix === 'room' || !prefix) {
+        try {
+          const room_response = await api.get<{
+            success: boolean;
+            room: ScannedRoom['data'];
+          }>(`/storage-rooms/${uuid}`);
 
-        if (room_response.data.success) {
-          scanned_item.value = {
-            type: 'room',
-            data: room_response.data.room,
-          };
-          return;
-        }
-      } catch (room_error) {
-        const axios_error = room_error as AxiosError<ApiErrorBody>;
-        if (axios_error.response?.status !== 404) {
-          throw room_error;
+          if (room_response.data.success) {
+            scanned_item.value = { type: 'room', data: room_response.data.room };
+            return;
+          }
+        } catch (room_error) {
+          const axios_error = room_error as AxiosError<ApiErrorBody>;
+          if (axios_error.response?.status !== 404) throw room_error;
         }
       }
 
