@@ -7,6 +7,7 @@ export default {
     credentials: 'Enter your credentials',
     remember_me: 'Remember me',
     login: 'Login',
+    page_title: 'FluxFlow Login',
     room_qr_meta: 'Room ID: {roomId}',
     welcome: 'Welcome Back to FluxFlow',
     subtitle: 'Coordinate sites, assets, and supervisors with one unified operations hub.',
@@ -109,6 +110,7 @@ export default {
     model_deleted: 'Model deleted successfully.',
     model_created: 'Model created successfully.',
     model_updated: 'Model updated successfully.',
+    edit_item: 'Edit Asset',
   },
   asset_detail: {
     title: 'Asset Details',
@@ -184,6 +186,7 @@ export default {
     invalid_input: 'Invalid input',
     password_mismatch: 'New password and confirm password must match.',
     password_change_failed: 'Failed to update password.',
+    update_asset_failed: 'Failed to update asset.',
   },
   messages: {
     assets_integrated: '{count} assets integrated successfully.',
@@ -200,6 +203,7 @@ export default {
     usage_update_rejected: 'Usage update was rejected by the server and will not be retried.',
     pending_usage_log_synced: '{count} pending usage log synced.',
     pending_usage_logs_synced: '{count} pending usage logs synced.',
+    asset_updated: 'Asset updated successfully.',
   },
   qr_preview: {
     model_label: 'Model:',
@@ -223,6 +227,11 @@ export default {
       serial_hint: 'Each line results in a unique asset instance.',
       discard: 'Discard',
       finalize: 'Finalize Allocation',
+    },
+    edit_asset: {
+      title: 'Edit Asset',
+      details: 'Edit asset details',
+      save: 'Save Changes',
     },
     new_site: {
       supervisor_required_for_usage_logs: 'A supervisor account is required to submit usage logs.',
@@ -293,7 +302,7 @@ export default {
   },
   scanner: {
     title: 'QR Scanner',
-    description: 'Use your camera to scan an asset QR tag.',
+    description: 'Use your camera to scan a QR tag.',
     input_label: 'Scan or enter UUID',
     scan_button: 'Scan',
     cancel: 'Cancel',
