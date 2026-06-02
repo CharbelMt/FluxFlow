@@ -3,7 +3,8 @@
   "appName": "FluxFlow",
   "webDir": "www",
   "server": {
-    "androidScheme": "https",
-    "hostname": "localhost"
+    "androidScheme": "http",
+    "url": "http://localhost:9500",
+    "cleartext": true
   }
 }
