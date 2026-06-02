@@ -13,7 +13,6 @@
 
         <q-card-section>
           <div class="row q-col-gutter-md">
-            <!-- Left Column: Asset Information -->
             <div class="col-12 col-md-6">
               <div class="q-mb-md">
                 <div class="text-overline text-grey">{{ $t('scanner_detail.asset_id') }}</div>
@@ -29,11 +28,16 @@
 
               <div class="q-mb-md">
                 <div class="text-overline text-grey">{{ $t('scanner_detail.status') }}</div>
-                <q-chip
-                  :label="getStatusLabel(scanned_item.data.status || '')"
-                  :color="getStatusColor(scanned_item.data.status || '')"
-                  text-color="white"
-                  size="sm"
+                <q-select
+                  :model-value="scanned_item.data.status || ''"
+                  :options="status_options"
+                  outlined
+                  dense
+                  emit-value
+                  map-options
+                  option-value="value"
+                  option-label="label"
+                  disable
                 />
               </div>
 
@@ -45,7 +49,6 @@
               </div>
             </div>
 
-            <!-- Right Column: Type Information -->
             <div class="col-12 col-md-6" v-if="scanned_item.data.type">
               <div class="q-mb-md">
                 <div class="text-overline text-grey">{{ $t('scanner_detail.model') }}</div>
@@ -73,7 +76,6 @@
 
           <q-separator class="q-my-md" />
 
-          <!-- Location Information -->
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6" v-if="scanned_item.data.site">
               <div class="text-overline text-grey">{{ $t('scanner_detail.assigned_site') }}</div>
@@ -94,7 +96,6 @@
           </div>
         </q-card-section>
 
-        <!-- Action Buttons -->
         <q-card-actions align="right">
           <q-btn flat :label="$t('scanner_detail.close')" color="primary" @click="emit('close')" />
           <q-btn
@@ -106,7 +107,6 @@
         </q-card-actions>
       </template>
 
-      <!-- Room Detail View -->
       <template v-else-if="scanned_item.type === 'room'">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">{{ $t('scanner_detail.storage_room_title') }}</div>
@@ -148,19 +148,16 @@
           </div>
         </q-card-section>
 
-        <!-- Action Buttons -->
         <q-card-actions align="right">
           <q-btn flat :label="$t('scanner_detail.close')" color="primary" @click="emit('close')" />
         </q-card-actions>
       </template>
     </q-card>
 
-    <!-- Empty State -->
     <q-banner v-else-if="!is_loading && !has_error" class="bg-grey-2">
       <div class="text-center text-grey">{{ $t('scanner_detail.empty_state') }}</div>
     </q-banner>
 
-    <!-- Error State -->
     <q-banner v-else-if="has_error" class="bg-negative text-white">
       <div class="row items-center">
         <q-icon name="error" size="md" class="q-mr-md" />
@@ -176,7 +173,6 @@
       </div>
     </q-banner>
 
-    <!-- Loading State -->
     <q-linear-progress v-if="is_loading" indeterminate color="primary" class="q-mt-md" />
   </div>
 </template>
@@ -196,46 +192,34 @@ defineProps<Props>();
 
 const { t: $t } = useI18n();
 
+const status_options = [
+  { label: $t('scanner_detail.status_on_site', 'On Site'), value: 'on_site' },
+  {
+    label: $t('scanner_detail.status_needs_maintenance', 'Needs Maintenance'),
+    value: 'needs_maintenance',
+  },
+  { label: $t('scanner_detail.status_offline', 'Offline'), value: 'offline' },
+];
+
 const emit = defineEmits<{
   close: [];
   'view-history': [asset_id: string];
   clear: [];
 }>();
 
-// Helper functions to handle both snake_case and camelCase fields
 const getSerialNumber = (asset: ScannedAssetData) =>
   asset.serialNumber || asset.serial_number || '';
+
 const getTotalHoursUsed = (asset: ScannedAssetData) =>
   asset.totalHoursUsed || asset.total_hours_used || 0;
+
 const getModelName = (assetType?: ScannedAssetData['type']) =>
   assetType?.modelName || assetType?.model_name || '';
+
 const getMaintenanceInterval = (assetType?: ScannedAssetData['type']) =>
   assetType?.maintenanceIntervalHrs || assetType?.maintenance_interval_hrs || 0;
-const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case 'on_site':
-      return $t('scanner_detail.status_on_site');
-    case 'in_transit':
-      return $t('scanner_detail.status_in_transit');
-    case 'maintenance':
-      return $t('scanner_detail.status_maintenance');
-    case 'offline':
-      return $t('scanner_detail.status_offline');
-    default:
-      return status;
-  }
-};
 
-const getStatusColor = (status: string) => {
-  const status_colors: Record<string, string> = {
-    on_site: 'positive',
-    in_transit: 'warning',
-    offline: 'negative',
-    maintenance: 'info',
-  };
-  return status_colors[status] || 'grey';
-};
+const getRoomLabel = (room: ScannedRoomData) => room.roomLabel || room.room_label || '';
 </script>
 
 <style scoped lang="scss">
