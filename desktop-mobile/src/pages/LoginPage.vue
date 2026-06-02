@@ -38,7 +38,7 @@
             </div>
           </div>
 
-          <q-banner v-if="errorMessage" class="bg-negative text-white q-mb-md">
+          <q-banner v-if="errorMessage" class="login-banner bg-negative text-white q-mb-md">
             {{ errorMessage }}
           </q-banner>
 
@@ -127,6 +127,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from 'src/stores/auth-store';
 import { mdiEmail, mdiLock } from '@quasar/extras/mdi-v7';
 import type { LoginCredentials } from 'src/utils/types';
@@ -134,10 +135,37 @@ import type { LoginCredentials } from 'src/utils/types';
 const router = useRouter();
 const authStore = useAuthStore();
 const $q = useQuasar();
+const { t: $t } = useI18n();
 
 const isPwd = ref(true);
 const isLoading = ref(false);
 const errorMessage = ref('');
+
+function showLoginMessage(color: 'positive' | 'negative' | 'warning', message: string) {
+  errorMessage.value = color === 'positive' ? '' : message;
+  $q.notify({ color, message });
+}
+
+function getLoginErrorMessage(
+  result: Extract<Awaited<ReturnType<typeof authStore.login>>, { success: false }>,
+) {
+  if (result.error) {
+    return result.error;
+  }
+
+  switch (result.reason) {
+    case 'invalid_credentials':
+      return $t('login.invalid_credentials');
+    case 'unexpected_response':
+      return $t('login.unexpected_response');
+    case 'network_error':
+      return 'Unable to reach the login server. Check your network and API URL.';
+    case 'server_error':
+      return 'The login server returned an error.';
+    case 'request_error':
+      return $t('login.login_failed');
+  }
+}
 
 const form = ref<LoginCredentials>({
   email: '',
@@ -150,26 +178,29 @@ async function onSubmit() {
   errorMessage.value = '';
 
   try {
-    const success = await authStore.login({
+    const result = await authStore.login({
       email: form.value.email,
       password: form.value.password,
       persist: form.value.persist,
     });
 
-    if (success) {
+    if (result.success) {
+      showLoginMessage('positive', $t('login.login_successful'));
       await router.push(authStore.user?.role === 'supervisor' ? { name: 'scanner' } : '/');
-    } else {
-      const msg = 'Invalid email or password';
-      errorMessage.value = msg;
+      return;
+    }
 
-      $q.notify({ color: 'negative', message: msg });
+    if (!result.success) {
+      const message = getLoginErrorMessage(result);
+      const color = result.reason === 'unexpected_response' ? 'warning' : 'negative';
+
+      showLoginMessage(color, message);
+      return;
     }
   } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : $t('login.login_failed');
     console.error('Login failed:', e);
-    const err = e as { response?: { data?: { error?: string } }; message?: string };
-    const msg = err.response?.data?.error || err.message || 'Login failed';
-    errorMessage.value = String(msg);
-    $q.notify({ color: 'negative', message: String(msg) });
+    showLoginMessage('negative', message);
   } finally {
     isLoading.value = false;
   }
@@ -177,6 +208,18 @@ async function onSubmit() {
 </script>
 
 <style scoped>
+:deep(.login-banner) {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+:deep(.login-banner .q-banner__content) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 :deep(.custom-input .q-field__control) {
   border-radius: 12px !important;
   background: #f8fafc !important;
