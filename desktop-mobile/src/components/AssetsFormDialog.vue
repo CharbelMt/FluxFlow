@@ -1,6 +1,9 @@
 <template>
   <q-card flat class="bg-white overflow-hidden" style="min-width: 550px">
-    <CardSectionTitle :title="$t('forms.add_asset.title')" @close="onDialogCancel" />
+    <CardSectionTitle
+      :title="isEdit ? $t('forms.edit_asset.title') : $t('forms.add_asset.title')"
+      @close="onDialogCancel"
+    />
 
     <q-card-section class="q-pa-lg flex flex-col gap-4">
       <div class="column gap-2">
@@ -52,15 +55,26 @@
       </div>
 
       <div class="column gap-2">
-        <div class="text-overline text-primary font-bold">{{ $t('forms.add_asset.step3') }}</div>
-        <q-input
-          v-model="serial_input"
-          type="textarea"
-          outlined
-          :placeholder="$t('forms.add_asset.serial_placeholder')"
-          :hint="$t('forms.add_asset.serial_hint')"
-          rows="5"
-        />
+        <div class="text-overline text-primary font-bold">
+          {{ isEdit ? $t('forms.edit_asset.details') : $t('forms.add_asset.step3') }}
+        </div>
+        <template v-if="!isEdit">
+          <q-input
+            v-model="serial_input"
+            type="textarea"
+            outlined
+            :placeholder="$t('forms.add_asset.serial_placeholder')"
+            :hint="$t('forms.add_asset.serial_hint')"
+            rows="5"
+          />
+        </template>
+        <template v-else>
+          <q-input
+            v-model="form.serial_number"
+            outlined
+            :label="$t('forms.add_asset.serial_placeholder')"
+          />
+        </template>
       </div>
     </q-card-section>
 
@@ -76,7 +90,7 @@
         unelevated
         rounded
         color="primary"
-        :label="$t('forms.add_asset.finalize')"
+        :label="isEdit ? $t('forms.edit_asset.save') : $t('forms.add_asset.finalize')"
         class="q-px-xl"
         :loading="submitting"
         :disable="submitting || !hasChanges"
@@ -87,14 +101,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAssetStore } from 'src/stores/asset-store';
 import { useSiteStore } from 'src/stores/site-store';
 import { useQuasar } from 'quasar';
 import CardSectionTitle from 'components/dialog/CardSectionTitle.vue';
+import type { AssetInstance } from 'src/utils/types';
+
+interface ComponentProps {
+  mode?: 'create' | 'edit';
+  asset?: AssetInstance;
+}
 
 const props = defineProps<{
+  mode?: 'create' | 'edit';
+  asset?: AssetInstance;
+  componentProps?: ComponentProps;
   onDialogOK: (payload: unknown) => void;
   onDialogCancel: () => void;
 }>();
@@ -111,21 +134,38 @@ const form = ref({
   site_id: '',
   room_id: '',
   type_id: undefined as string | undefined,
+  serial_number: '' as string,
 });
 
-const initialState = {
-  serial_input: serial_input.value,
-  site_id: form.value.site_id,
-  room_id: form.value.room_id,
-  type_id: form.value.type_id,
-};
+const initialState = ref({
+  serial_input: '',
+  site_id: '',
+  room_id: '',
+  type_id: undefined as string | undefined,
+  serial_number: '',
+});
+
+const editingAsset = computed(() => props.asset || props.componentProps?.asset);
+const dialogMode = computed(
+  () => props.mode || props.componentProps?.mode || (editingAsset.value ? 'edit' : 'create'),
+);
+const isEdit = computed(() => dialogMode.value === 'edit');
 
 const hasChanges = computed(() => {
+  if (isEdit.value) {
+    return (
+      form.value.serial_number !== initialState.value.serial_number ||
+      form.value.site_id !== initialState.value.site_id ||
+      form.value.room_id !== initialState.value.room_id ||
+      form.value.type_id !== initialState.value.type_id
+    );
+  }
+
   return (
-    serial_input.value !== initialState.serial_input ||
-    form.value.site_id !== initialState.site_id ||
-    form.value.room_id !== initialState.room_id ||
-    form.value.type_id !== initialState.type_id
+    serial_input.value !== initialState.value.serial_input ||
+    form.value.site_id !== initialState.value.site_id ||
+    form.value.room_id !== initialState.value.room_id ||
+    form.value.type_id !== initialState.value.type_id
   );
 });
 
@@ -145,7 +185,69 @@ const availableRooms = computed(() => {
   return site ? site.storageRooms : [];
 });
 
+watch(
+  editingAsset,
+  (val) => {
+    if (val) {
+      form.value.site_id = val.site?.id || (val.assigned_site_id as string) || '';
+      form.value.room_id = val.room?.id || (val.current_room_id as string) || '';
+      form.value.type_id = val.type?.id || (val.type_id as string) || undefined;
+      form.value.serial_number = val.serialNumber || val.serial_number || '';
+
+      initialState.value = {
+        serial_input: '',
+        site_id: form.value.site_id,
+        room_id: form.value.room_id,
+        type_id: form.value.type_id,
+        serial_number: form.value.serial_number,
+      };
+    } else {
+      // reset for create mode
+      form.value.site_id = '';
+      form.value.room_id = '';
+      form.value.type_id = undefined;
+      form.value.serial_number = '';
+      serial_input.value = '';
+      initialState.value = {
+        serial_input: '',
+        site_id: '',
+        room_id: '',
+        type_id: undefined,
+        serial_number: '',
+      };
+    }
+  },
+  { immediate: true },
+);
+
 async function handleSubmission() {
+  if (isEdit.value) {
+    // Prepare update payload
+    const editing = editingAsset.value;
+    if (!editing) return;
+
+    submitting.value = true;
+    try {
+      const payload = {
+        serial_number: form.value.serial_number || null,
+        type_id: form.value.type_id || null,
+        assigned_site_id: form.value.site_id || null,
+        current_room_id: form.value.room_id || null,
+      };
+
+      const result = await assetStore.updateAsset(editing.id, payload);
+      $q.notify({ color: 'positive', message: $t('messages.asset_updated') });
+      props.onDialogOK(result);
+    } catch (err) {
+      console.error(err);
+      $q.notify({ color: 'negative', message: $t('errors.update_asset_failed') });
+    } finally {
+      submitting.value = false;
+    }
+    return;
+  }
+
+  // Create mode
   const serials = serial_input.value
     .split('\n')
     .map((s) => s.trim())

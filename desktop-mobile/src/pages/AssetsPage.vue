@@ -165,6 +165,10 @@
                     <q-item-section avatar><q-icon name="qr_code_2" /></q-item-section>
                     <q-item-section>{{ $t('assets.generate_qr') }}</q-item-section>
                   </q-item>
+                  <q-item v-if="isManager" clickable @click="openEdit(props.row)">
+                    <q-item-section avatar><q-icon name="edit" /></q-item-section>
+                    <q-item-section>{{ $t('assets.edit_item') }}</q-item-section>
+                  </q-item>
                   <q-item
                     v-if="!isSupervisor"
                     clickable
@@ -209,6 +213,7 @@ const route = useRoute();
 const router = useRouter();
 const { t: $t } = useI18n();
 const isSupervisor = computed(() => authStore.user?.role === 'supervisor');
+const isManager = computed(() => authStore.user?.role === 'manager');
 
 const selectedSiteId = computed(() => {
   const value = route.query.siteId;
@@ -284,7 +289,9 @@ const columns: QTableColumn[] = [
 function openIntake() {
   pushDialog(
     AssetsFormDialog,
-    {},
+    {
+      mode: 'create',
+    },
     {
       persistent: true,
     },
@@ -343,6 +350,22 @@ function viewHistory(asset: { id: string; serialNumber?: string; serial_number?:
     assetId: asset.id,
     assetLabel,
   });
+}
+
+function openEdit(asset: { id: string }) {
+  if (!isManager.value) {
+    $q.notify({ color: 'negative', message: $t('errors.unauthorized') });
+    return;
+  }
+
+  pushDialog(
+    AssetsFormDialog,
+    {
+      mode: 'edit',
+      asset,
+    },
+    { persistent: true },
+  );
 }
 
 async function generateAssetQr(asset: {

@@ -14,6 +14,7 @@
       v-bind="{
         onDialogOK,
         onDialogCancel,
+        ...componentToRenderProps,
         componentProps: { ...componentToRenderProps },
       }"
     />
