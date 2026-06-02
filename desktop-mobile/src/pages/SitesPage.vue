@@ -90,24 +90,41 @@
                         <q-item-label class="font-semibold">{{ room.roomLabel }}</q-item-label>
                       </q-item-section>
                       <q-item-section side>
-                        <div class="row items-center q-gutter-xs">
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            color="primary"
-                            :icon="mdiPencil"
-                            @click="openEditRoomDialog(site, room)"
-                          />
-                          <q-btn
-                            flat
-                            round
-                            dense
-                            color="teal"
-                            :icon="mdiQrcode"
-                            @click="generateRoomQr(site, room)"
-                          />
-                        </div>
+                        <q-btn flat round dense color="slate-400" :icon="mdiDotsVertical">
+                          <q-menu anchor="bottom right" self="top right">
+                            <q-list style="min-width: 200px">
+                              <q-item clickable @click="openEditRoomDialog(site, room)">
+                                <q-item-section avatar>
+                                  <q-icon :name="mdiPencil" color="primary" />
+                                </q-item-section>
+                                <q-item-section>{{ $t('sites.edit') }}</q-item-section>
+                              </q-item>
+                              <q-item clickable @click="generateRoomQr(site, room)">
+                                <q-item-section avatar>
+                                  <q-icon :name="mdiQrcode" color="teal" />
+                                </q-item-section>
+                                <q-item-section>{{ $t('sites.generate_qr') }}</q-item-section>
+                              </q-item>
+                              <q-item clickable @click="showRoomLocationDetails(room)">
+                                <q-item-section avatar>
+                                  <q-icon :name="mdiInformation" color="cyan" />
+                                </q-item-section>
+                                <q-item-section>{{
+                                  $t('sites.view_location_details')
+                                }}</q-item-section>
+                              </q-item>
+                              <q-separator />
+                              <q-item clickable @click="confirmDeleteRoom(site, room)">
+                                <q-item-section avatar>
+                                  <q-icon :name="mdiDelete" color="negative" />
+                                </q-item-section>
+                                <q-item-section class="text-negative">{{
+                                  $t('common.delete')
+                                }}</q-item-section>
+                              </q-item>
+                            </q-list>
+                          </q-menu>
+                        </q-btn>
                       </q-item-section>
                     </q-item>
                   </q-list>
@@ -177,6 +194,9 @@ import {
   mdiAccountGroup,
   mdiPencil,
   mdiQrcode,
+  mdiDelete,
+  mdiDotsVertical,
+  mdiInformation,
 } from '@quasar/extras/mdi-v7';
 import { useRouter } from 'vue-router';
 
@@ -329,6 +349,54 @@ function confirmDeleteSite(site: { id: string; name: string }) {
         $q.notify({ color: 'negative', message: $t('errors.delete_site_failed') });
       }
     })();
+  });
+}
+
+function confirmDeleteRoom(site: { name: string }, room: { id: string; roomLabel?: string }) {
+  $q.dialog({
+    title: $t('dialogs.delete_room_title', 'Delete Storage Room'),
+    message: $t('dialogs.delete_room_message', { roomName: room.roomLabel || room.id }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: $t('dialogs.delete', 'Delete'),
+      color: 'negative',
+      unelevated: true,
+    },
+  }).onOk(() => {
+    void (async () => {
+      try {
+        await siteStore.deleteStorageRoom(room.id);
+        await siteStore.fetchSites();
+        $q.notify({
+          color: 'positive',
+          message: $t('messages.room_deleted', 'Storage room cleared.'),
+        });
+      } catch (error) {
+        console.error(error);
+        $q.notify({
+          color: 'negative',
+          message: $t('errors.delete_room_failed', 'Failed to remove storage room.'),
+        });
+      }
+    })();
+  });
+}
+
+function showRoomLocationDetails(room: {
+  id: string;
+  roomLabel?: string;
+  specificLocationDetails?: string;
+}) {
+  const location_text = room.specificLocationDetails || $t('sites.no_location_details');
+  $q.dialog({
+    title: $t('sites.location_details', 'Room Location Details'),
+    message: `<strong>${room.roomLabel || room.id}</strong><br><br>${location_text}`,
+    html: true,
+    ok: {
+      label: $t('common.close', 'Close'),
+      unelevated: true,
+    },
   });
 }
 
