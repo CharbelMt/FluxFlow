@@ -447,7 +447,7 @@ const app = new Elysia()
 					}
 
 					try {
-						const qr_payload = fetched_room.id;
+						const qr_payload = `room|${fetched_room.id}`;
 						const qr_svg = await QRCode.toString(qr_payload, {
 							type: "svg",
 							margin: 1,
@@ -934,7 +934,7 @@ const app = new Elysia()
 					}
 
 					try {
-						const qr_payload = fetched_asset.id;
+						const qr_payload = `asset|${fetched_asset.id}`;
 						const qr_svg = await QRCode.toString(qr_payload, {
 							type: "svg",
 							margin: 1,
