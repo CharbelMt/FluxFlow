@@ -1,76 +1,135 @@
 # FluxFlow
 
-FluxFlow is a comprehensive asset management system designed for tracking and managing assets in various environments. The system supports scanning of QR codes for both assets and storage rooms, providing detailed information about each item.
+A monorepo asset management system for tracking assets and storage rooms via QR code scanning. Built with a Bun-powered backend and a cross-platform frontend targeting both desktop (Electron) and mobile (Capacitor).
 
-### Features
+---
 
-- **QR Code Scanning**: Scan QR codes to quickly access asset and room information
-- **Asset Management**: Track assets with detailed information including serial numbers, status, and maintenance intervals
-- **Room Management**: Manage storage rooms with location details and GPS coordinates
-- **Recent Scans**: View a history of recently scanned items
-- **_Multi-language Support_**: Internationalization support for different languages
+## Repository Structure
 
-### Installation
+```
+fluxflow/
+├── backend/          # REST API — Bun + Drizzle ORM + PostgreSQL
+└── desktop-mobile/   # Cross-platform UI — Quasar + Electron + Capacitor
+```
 
-1. Clone the repository:
+---
 
-`git clone https://github.com/yourusername/fluxflow.git`
+## Prerequisites
 
-2. Install dependencies:
+- [Bun](https://bun.sh) >= 1.0
+- [Node.js](https://nodejs.org) >= 18 (required by Electron/Capacitor tooling)
+- PostgreSQL instance (local or remote)
+- For Android builds: Android Studio + SDK
+- For iOS builds: Xcode (macOS only)
 
-`npm install`
+---
 
-3. Run the development server:
+## Backend
 
-`npm run dev`
+### 1. Install dependencies
 
-### Usage
+```bash
+cd backend
+bun install
+```
 
-1. **Scanning**:
+### 2. Configure environment
 
-- Open the scanner page
-- Point your device's camera at a QR code
-- The system will automatically detect and display information about the scanned item
+```bash
+cp .env.example .env
+```
 
-2. **Viewing Details**:
+Fill in `.env`:
 
-- After scanning, detailed information about the asset or room will be displayed
-- For assets, you can view history and maintenance information
-- For rooms, you can see location details and GPS coordinates
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/fluxflow
+PORT=3000
+```
 
-3. **Recent Scans**:
+### 3. Run migrations
 
-- View a list of recently scanned items
-- Click on any item to quickly access its details
+```bash
+bun run db:migrate
+```
 
-### Project Structure
+### 4. Start the server
 
-The project follows a standard Vue.js structure with the following key components:
+```bash
+bun run dev
+```
 
-- **ScannerPage.vue**: Main scanning interface with camera functionality
-- **ScannerDetailView.vue**: Displays detailed information about scanned items
-- **useScanner.ts**: Composable for scanner functionality
-- **useDialog.ts**: Composable for dialog management
-- **DialogComponent.vue**: Base component for dialogs
-- **CardSectionTitle.vue**: Component for section titles in cards
+The API will be available at `http://localhost:3000`.
 
-### Dependencies
+---
 
-- Vue.js 3
-- Quasar Framework
-- Vue Router
-- Vue I18n
-- vue-qrcode-reader
+## Desktop / Mobile (Quasar)
 
-### Contributing
+### 1. Install dependencies
 
-Contributions are welcome! Please follow these steps:
+```bash
+cd desktop-mobile
+bun install
+```
 
-1. Fork the repository
-2. Create a new branch for your feature
-3. Make your changes
-4. Submit a pull request
+### 2. Configure environment
 
-### License
+```bash
+cp .env.electron.example .env.electron
+cp .env.capacitor.example .env.capacitor
+```
 
-This project is licensed under the MIT License.
+Set the backend API URL in each file accordingly.
+
+### 3. Run in browser (for development)
+
+```bash
+bun run dev
+```
+
+### 4. Run as desktop app (Electron)
+
+```bash
+bun run dev:electron
+```
+
+### 5. Run on mobile (Capacitor)
+
+Sync the web build to the native project first:
+
+```bash
+bun run build
+bun run sync          # or: npx cap sync
+```
+
+Then open in the respective IDE:
+
+```bash
+npx cap open android  # Android Studio
+npx cap open ios      # Xcode (macOS only)
+```
+
+- Note: Check package.json for dev scripts
+
+---
+
+## Running the Full Stack
+
+Start both services in separate terminals:
+
+```bash
+# Terminal 1 — backend
+cd backend && bun run dev
+
+# Terminal 2 — frontend
+cd desktop-mobile && bun run dev
+```
+
+---
+
+## Features
+
+- QR code scanning for assets and storage rooms
+- Asset tracking with serial numbers, status, and maintenance intervals
+- Room management with location details and GPS coordinates
+- Recent scan history
+- Multi-language support (i18n)
