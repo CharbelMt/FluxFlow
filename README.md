@@ -2,6 +2,8 @@
 
 A monorepo asset management system for tracking assets and storage rooms via QR code scanning. Built with a Bun-powered backend and a cross-platform frontend targeting both desktop (Electron) and mobile (Capacitor).
 
+> **Repository:** https://github.com/CharbelMt/FluxFlow
+
 ---
 
 ## Repository Structure
